@@ -1,15 +1,16 @@
-INSUMOS CENTRAL RETIROS · v2.1 · Mi Perfil unificado
-=======================================================
-Actualización visual: acceso a las opciones de perfil desde la foto/inicial
-(cabecera móvil y computador) y desde el menú Más en móvil.
+# Insumos Central Retiros · v2.2.0
 
-Administrador: Mi PIN, Cambiar contraseña, Cerrar sesión.
-Solicitante: Cambiar PIN, Cerrar sesión.
-Se conserva la autenticación y todas las funcionalidades de v2.0.
-No se necesitan migraciones ni cambios de base de datos.
+## Preparaciones históricas privadas
+- Importación por Excel `.xlsx` o CSV/TSV desde **Preparaciones anteriores** (solo administrador).
+- Previsualización y validación antes de guardar. Cliente y código deben existir en el catálogo.
+- Campos obligatorios: FECHA, CLIENTE, CODIGO, CANTIDAD. Opcionales: PRECIO UNITARIO, DOCUMENTO, PREPARADO POR, OBSERVACION.
+- Si falta precio se usa el precio vigente **solo como estimación** y queda marcado como tal.
+- Análisis por fecha, cliente, código e importe, exportación Excel, historial de lotes y anulación de un lote importado.
+- **NO** altera stock, reservas, solicitudes ni el análisis de salidas aprobadas.
+- Solo administradores pueden consultar/importar/anular este historial (RLS + RPC en Supabase).
 
-INSTALACIÓN
-1) Extraer el ZIP.
-2) Subir los 11 archivos a la raíz del repositorio GitHub y confirmar la sustitución.
-3) En Render, Manual Deploy > Deploy latest commit, si no se publica automáticamente.
-4) Recargar la aplicación e ingresar al perfil tocando el círculo con la inicial.
+## Publicación
+Sube los **12 archivos** de este ZIP a la raíz de tu repositorio GitHub y en Render usa **Manual Deploy → Deploy latest commit** si el despliegue no inicia automáticamente.
+
+### Seguridad
+No compartas el historial importado con solicitantes. El contenido histórico y los importes solo se consultan mediante credenciales del administrador.

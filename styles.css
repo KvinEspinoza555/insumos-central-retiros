@@ -599,3 +599,17 @@ textarea{border-radius:20px;}
   .profile-menu-header{padding:15px;}
   .profile-menu-action{min-height:62px;}
 }
+
+/* v2.2 · Preparaciones anteriores (solo administración) */
+.history-import{border:1px solid #E5DDEB;background:linear-gradient(145deg,#FFFFFF,#FCFAFF)}
+.history-import .panel-head{align-items:center;gap:8px;flex-wrap:wrap}
+.history-import>p{font-size:12px;color:#766D81;line-height:1.7;max-width:850px}
+.history-upload-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 0 9px}
+.history-upload-actions input[type=file]{flex:1 1 280px;min-width:0;background:#FCFBFF;border:1px dashed #CDBFDD;border-radius:12px;padding:12px 10px;font:inherit;color:#544365;max-width:100%}
+.history-upload-actions input[type=file]::file-selector-button{background:#F2ECF8;border:0;border-radius:9px;padding:9px 12px;margin-right:10px;color:#5C3A7C;font-weight:750;cursor:pointer}
+.history-preview{border:1px solid #E0D4ED;background:#FEFCFF}
+.history-preview ul{padding-left:21px;margin:8px 0 0;max-height:170px;overflow-y:auto}
+.history-preview .actions{display:flex;gap:10px;justify-content:flex-start;flex-wrap:wrap;margin-top:15px}
+.history-preview .table-wrap{margin-top:12px}
+.history-preview .table-wrap table{min-width:580px}
+@media(max-width:760px){.history-upload-actions{display:grid;grid-template-columns:1fr;}.history-upload-actions input[type=file]{width:100%;flex-basis:auto}.history-upload-actions .btn{width:100%}}

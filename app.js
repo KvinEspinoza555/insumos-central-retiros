@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.1';
 import { downloadDeliveryPdf, deliveryFolio } from './receipt-pdf.js';
+import { readPreparationFile } from './history-file.js';
 
 'use strict';
 const conf=window.CENTRAL_RETIROS_CONFIG||{};
@@ -38,7 +39,7 @@ function glyph(kind){
  const name=paths[kind]?kind:(fallback[kind]||"home");
  return '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths[name]+'</svg>';
 }
-const s={page:'home',profile:null,session:null,clients:[],products:[],prices:[],profiles:[],invites:[],assignments:[],orders:[],lines:[],linePrices:[],movements:[],deliveryNotes:[],counts:[],alerts:null,analytics:null,analyticsDays:30,analyticsClient:'',analyticsLoading:false,cart:[],register:false,busy:false,filter:'all',reportFrom:'',reportTo:'',modal:null};
+const s={page:'home',profile:null,session:null,clients:[],products:[],prices:[],profiles:[],invites:[],assignments:[],orders:[],lines:[],linePrices:[],movements:[],deliveryNotes:[],counts:[],alerts:null,analytics:null,analyticsDays:30,analyticsClient:'',analyticsLoading:false,historyDays:365,historyClient:'',historyAnalytics:null,historyBatches:[],historyLoading:false,historyUploading:false,historyPreview:null,cart:[],register:false,busy:false,filter:'all',reportFrom:'',reportTo:'',modal:null};
 let realtime=null,syncTimer=null,interval=null,lastSync=0,loading=false;
 const isAdmin=()=>s.profile?.role==='admin' && s.profile?.active;
 const product=id=>s.products.find(p=>p.id===id);
@@ -58,12 +59,12 @@ function spinner(){root.innerHTML='<main class="loading-screen"><div class="spin
 function setup(){root.innerHTML=`<main class="loading-screen"><div class="setup-card">${brand}<div class="divider"></div><span class="eyebrow">Falta conectar la base de datos</span><h2>Versión lista para sincronizar</h2><p>El diseño y las pantallas ya están preparados. Para activar los datos reales, necesitamos crear un proyecto gratuito en Supabase y completar <code>config.js</code> con la URL y la clave <b>publicable</b>.</p><div class="notice">No ingreses usuarios ni información laboral mientras la conexión no esté configurada.</div></div></main>`}
 function login(){root.innerHTML=`<div class="login-wrap"><section class="login-visual">${brand}<div class="hero-text"><h1>El control de insumos, <em>sin complicaciones.</em></h1><p>Una forma sencilla de organizar solicitudes, inventario y entregas. Todo conectado, sin perder claridad.</p></div><div class="hero-perks"><span>Stock compartido</span><span>Gestión simple</span><span>Móvil y escritorio</span></div></section><section class="login-body"><div class="login-card"><span class="eyebrow">Acceso al sistema</span><h2>${s.register?'Configuración inicial':'Bienvenido'}</h2><p>${s.register?'Utiliza el correo de tu cuenta administradora únicamente para asignar tu primer número de ID.':'Ingresa con tu ID y PIN de 4 números. Si eres administrador, también puedes usar tu contraseña.'}</p><form data-form="${s.register?'signin-admin-setup':'signin'}"><div class="field"><label>${s.register?'Correo de administrador (solo primera vez)':'Número de ID'}</label><input name="${s.register?'email':'employee_id'}" ${s.register?'type="email" autocomplete="email"':'type="text" inputmode="numeric" pattern="[0-9]{1,16}" maxlength="16" autocomplete="username"'} required placeholder="${s.register?'administrador@empresa.com':'Ej.: 1234567'}"></div><div class="field"><label>Contraseña o PIN</label><input name="password" required minlength="${s.register?8:4}" type="password" autocomplete="current-password" placeholder="${s.register?'Contraseña':'PIN de 4 números o contraseña'}"></div><button type="submit" class="btn btn-primary btn-full">Ingresar</button></form><button class="link" data-action="switch-auth">${s.register?'Volver al acceso con número de ID':'¿Eres el administrador y aún no tienes ID? Configurarlo'}</button><div class="card-note">🔒 Los precios, el inventario y las aprobaciones tienen permisos separados. Tu número de ID es único.</div></div></section></div>`}
 function pending(){root.innerHTML=`<main class="loading-screen"><div class="setup-card">${brand}<div class="divider"></div><span class="eyebrow">Acceso pendiente</span><h2>Tu cuenta aún no está autorizada</h2><p>Solicita al administrador la activación de tu cuenta y número de ID.</p><button class="btn btn-primary" data-action="logout">Cerrar sesión</button></div></main>`}
-const NAVADMIN=[['home','Inicio','▦'],['new','Solicitar','＋'],['orders','Solicitudes','▤'],['alerts','Alertas','bell'],['inventory','Inventario','▥'],['products','Insumos','▧'],['clients','Clientes','◈'],['people','Personal','♙'],['analytics','Consumo y costos','analytics'],['reports','Reportes','▨']];
+const NAVADMIN=[['home','Inicio','▦'],['new','Solicitar','＋'],['orders','Solicitudes','▤'],['alerts','Alertas','bell'],['inventory','Inventario','▥'],['products','Insumos','▧'],['clients','Clientes','◈'],['people','Personal','♙'],['analytics','Consumo y costos','analytics'],['history','Preparaciones anteriores','count'],['reports','Reportes','▨']];
 const NAVUSER=[['home','Inicio','▦'],['new','Solicitar','＋'],['orders','Mis solicitudes','▤']];
 function shell(){const nav=isAdmin()?NAVADMIN:NAVUSER;const cur=nav.find(x=>x[0]===s.page)||nav[0];root.innerHTML=`<div class="app-shell"><aside class="sidebar">${brand}<nav class="side-nav">${nav.map(([k,name,ico])=>`<button class="nav-btn ${s.page===k?'active':''}" data-page="${k}"><span class="nav-ico">${glyph(k)}</span>${name}</button>`).join('')}</nav><div class="sidebar-foot"><strong>${esc(s.profile.full_name||'Usuario')}</strong><p>ID: ${esc(s.profile.employee_id||'Sin asignar')}</p><span class="tag">${isAdmin()?'Administrador':'Solicitante'}</span><p style="margin-top:15px"><button class="btn btn-small profile-sidebar-btn" data-action="profile">${glyph("profile")} <span>Mi perfil</span></button></p></div></aside><div class="main"><header class="topbar"><div><h1>${esc(cur[1])}</h1><p>Central Retiros · ${isAdmin()?'Administración':'Mis solicitudes'}</p></div><div class="topright">${isAdmin()?`<button class="alert-bell" data-page="alerts" title="Ver alertas" aria-label="Ver alertas">${glyph("bell")}${alertBadgeCount()?`<b>${Math.min(99,alertBadgeCount())}</b>`:""}</button>`:""}<span class="tag green">● En línea</span><button class="btn btn-small" data-action="refresh" title="Actualizar">↻ <span class="only-desktop">Actualizar</span></button><button class="avatar" data-action="profile" title="Mi perfil" aria-label="Abrir mi perfil">${esc((s.profile.full_name||'U')[0]).toUpperCase()}</button></div></header><main class="content">${renderPage()}<div class="foot-note">Insumos Central Retiros · Stock compartido · Acceso protegido</div></main></div></div><nav class="mobile-nav">${(isAdmin()?[['home','Inicio','▦'],['new','Solicitar','＋'],['orders','Pedidos','▤'],['inventory','Stock','▥']]:NAVUSER).map(([k,name,ico])=>`<button data-page="${k}" class="${s.page===k?'active':''}"><span>${glyph(k)}</span>${name}</button>`).join('')}${isAdmin()?`<button data-action="more"><span>${glyph("more")}</span>Más</button>`:""}</nav>`;if(s.modal)renderModal()}
 function header(title,subtitle,extra=''){return `<div class="intro"><div><h2>${title}</h2><p>${subtitle}</p></div><div class="actions">${extra}</div></div>`}
 function stat(label,value,ico,sub='',orange=false){return `<div class="stat ${orange?'orange':''}"><div class="emoji">${glyph(ico)}</div><label>${label}</label><strong>${value}</strong><small>${sub}</small></div>`}
-function renderPage(){switch(s.page){case 'home':return home();case 'new':return requestPage();case 'orders':return ordersPage();case 'alerts':return alertsPage();case 'inventory':return inventoryPage();case 'products':return productsPage();case 'clients':return clientsPage();case 'people':return peoplePage();case 'reports':return reportsPage();case 'analytics':return analyticsPage();default:return home()}}
+function renderPage(){switch(s.page){case 'home':return home();case 'new':return requestPage();case 'orders':return ordersPage();case 'alerts':return alertsPage();case 'inventory':return inventoryPage();case 'products':return productsPage();case 'clients':return clientsPage();case 'people':return peoplePage();case 'reports':return reportsPage();case 'analytics':return analyticsPage();case 'history':return historyPage();default:return home()}}
 
 function alertBadgeCount(){
  if(!isAdmin()||!s.alerts)return 0;
@@ -105,7 +106,7 @@ function home(){
   ['Historial',s.orders.length,'Solicitudes realizadas']
  ];
  const actions=admin?[
-  ['new','Solicitar insumos','new'],['alerts','Ver alertas','bell'],['inventory','Ingresar stock','inventory'],['products','Nuevo insumo','products'],['people','Personal','people'],['analytics','Consumo y costos','analytics']
+  ['new','Solicitar insumos','new'],['alerts','Ver alertas','bell'],['inventory','Ingresar stock','inventory'],['products','Nuevo insumo','products'],['people','Personal','people'],['analytics','Consumo y costos','analytics'],['history','Preparaciones anteriores','count']
  ]:[['new','Nueva solicitud','new'],['orders','Mis solicitudes','orders']];
  const stockList=(admin?s.products.filter(p=>p.active&&available(p)<=p.min_stock):s.products.filter(p=>p.active&&available(p)>0)).slice(0,6);
  const stockMarkup=stockList.length?stockList.map(p=>{
@@ -150,6 +151,167 @@ function peoplePage(){if(!isAdmin())return home();return `${header('Personal y a
 const analyticsNum=n=>Number(n)||0;
 const analyticsN=n=>new Intl.NumberFormat('es-CL',{maximumFractionDigits:0}).format(analyticsNum(n));
 const percentage=(value,largest)=>Math.min(100,Math.max(0,largest?100*analyticsNum(value)/largest:0));
+const historyNormalize=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+const historyHeaders={date:['FECHA','FECHA PREPARACION','FECHA PREPARADO','DATE'],client:['CLIENTE','CLIENTE DESTINO','NOMBRE CLIENTE','CUSTOMER'],sku:['COD','CODIGO','CODIGO INSUMO','SKU','COD PRODUCTO'],quantity:['CANTIDAD','CANT','QTY','UNIDADES','CANTIDAD PREPARADA'],unit_price:['PRECIO UNITARIO','PRECIO','VALOR UNI','VALOR UNITARIO','COSTO UNITARIO'],document_no:['DOCUMENTO','N DOCUMENTO','GUIA','N GUIA','COMPROBANTE','FOLIO'],preparer:['PREPARADO POR','PREPARADOR','RESPONSABLE','OPERADOR'],notes:['OBSERVACION','OBSERVACIONES','NOTA','COMENTARIO','DETALLE PREPARACION']};
+function historyDate(v){
+ let t=String(v??'').trim();if(!t)return null;
+ if(/^\d{4,6}(\.\d+)?$/.test(t)){
+  const d=new Date(Date.UTC(1899,11,30)+Math.floor(Number(t))*86400000);
+  return Number.isFinite(d.getTime())?d.toISOString().slice(0,10):null;
+ }
+ let year,month,day,m;
+ if(m=t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)){year=Number(m[1]);month=Number(m[2]);day=Number(m[3]);}
+ else if(m=t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/)){day=Number(m[1]);month=Number(m[2]);year=Number(m[3]);if(year<100)year+=year<70?2000:1900;}
+ else return null;
+ const d=new Date(Date.UTC(year,month-1,day));
+ if(d.getUTCFullYear()!==year||d.getUTCMonth()+1!==month||d.getUTCDate()!==day)return null;
+ return d.toISOString().slice(0,10);
+}
+function historyNumber(v){
+ let t=String(v??'').trim().replace(/[\s$]/g,'').replace(/^CLP/i,'');
+ if(!t)return null;
+ if(t.includes(',')&&t.includes('.')){
+  if(t.lastIndexOf(',')>t.lastIndexOf('.'))t=t.replace(/\./g,'').replace(',','.');
+  else t=t.replace(/,/g,'');
+ }else if(t.includes(',')){
+  t=/,\d{1,2}$/.test(t)?t.replace(',','.'):t.replace(/,/g,'');
+ }else if(/^\d{1,3}(\.\d{3})+$/.test(t))t=t.replace(/\./g,'');
+ if(!/^\d+(\.\d+)?$/.test(t))return null;
+ const n=Number(t);return Number.isFinite(n)?n:null;
+}
+function historyHeaderMap(row){
+ const cols=(row||[]).map(historyNormalize);let map={};
+ for(const [key,aliases] of Object.entries(historyHeaders)){
+  map[key]=cols.findIndex(c=>aliases.includes(c));
+ }
+ return map;
+}
+function historyFilePreview(parsed,fileName){
+ const input=parsed.rows||[];
+ let at=-1,headers={};
+ for(let i=0;i<Math.min(12,input.length);i++){
+  const candidate=historyHeaderMap(input[i]);
+  if(['date','client','sku','quantity'].every(k=>candidate[k]>=0)){at=i;headers=candidate;break}
+ }
+ if(at<0)throw new Error('No encontré las columnas FECHA, CLIENTE, CODIGO y CANTIDAD en la primera hoja. Descarga la plantilla para ver el formato.');
+ const records=[],errors=[],missing=[],estimated=[],todayLocal=today();
+ const clientsByName=new Map();for(const c of s.clients){const k=historyNormalize(c.name);if(!clientsByName.has(k))clientsByName.set(k,[]);clientsByName.get(k).push(c)}
+ const productsBySku=new Map(s.products.map(p=>[String(p.sku).trim().toUpperCase(),p]));
+ const has=key=>headers[key]>=0;
+ let totalCost=0,estimateCost=0;
+ for(let i=at+1;i<input.length;i++){
+  const row=input[i]||[];
+  if(!row.some(x=>String(x??'').trim()))continue;
+  const get=key=>has(key)?String(row[headers[key]]??'').trim():'';
+  const problems=[],date=historyDate(get('date'));
+  if(!date||date<'2010-01-01'||date>todayLocal)problems.push('fecha inválida');
+  const name=get('client'),matches=clientsByName.get(historyNormalize(name))||[];
+  if(matches.length!==1)problems.push(matches.length?'cliente ambiguo':'cliente no registrado: '+name);
+  const sku=get('sku').toUpperCase(),prod=productsBySku.get(sku);
+  if(!prod)problems.push('código no registrado: '+sku);
+  const qty=historyNumber(get('quantity'));
+  if(!Number.isSafeInteger(qty)||qty<1||qty>10000000)problems.push('cantidad inválida');
+  const rawPrice=get('unit_price'),isFromFile=rawPrice!=='';
+  const unitPrice=isFromFile?historyNumber(rawPrice):prod?historyNumber(price(prod.id)):null;
+  if(unitPrice===null||unitPrice<0||unitPrice>1000000000)problems.push('precio inválido o inexistente');
+  if(get('document_no').length>100||get('preparer').length>120||get('notes').length>300)problems.push('texto demasiado largo');
+  if(problems.length){errors.push('Fila '+(i+1)+': '+problems.join('; '));continue;}
+  const rec={date,client_id:matches[0].id,product_id:prod.id,sku:prod.sku,quantity:qty,price_origin:isFromFile?'file':'catalog',unit_price:unitPrice,document_no:get('document_no'),preparer:get('preparer'),notes:get('notes'),client_name:matches[0].name,product_name:prod.name};
+  records.push(rec);totalCost+=qty*unitPrice;
+  if(!isFromFile){estimated.push(i+1);estimateCost+=qty*unitPrice;}
+ }
+ if(!records.length&&!errors.length)throw Error('El archivo no contiene registros de preparaciones.');
+ if(records.length+errors.length>2000)throw Error('Máximo 2.000 registros por archivo. Divide la información por mes.');
+ return {sha:parsed.sha,fileName,records,errors,estimated:estimated.length,estimatedCost:estimateCost,totalCost};
+}
+function historyPage(){
+ if(!isAdmin())return home();
+ const a=s.historyAnalytics||{},st=a.stats||{},clients=a.clients||[],products=a.products||[],trend=a.trend||[],recent=a.latest||[],batches=s.historyBatches||[];
+ const preview=s.historyPreview;
+ const periodOptions=[[7,'Últimos 7 días'],[30,'Últimos 30 días'],[90,'Últimos 90 días'],[365,'Últimos 12 meses'],[0,'Todo el historial']];
+ const controls=`<div class="analytics-filters"><label>Período<select id="historyDays">${periodOptions.map(([n,name])=>`<option value="${n}" ${s.historyDays===n?'selected':''}>${name}</option>`).join('')}</select></label><label>Cliente<select id="historyClient"><option value="">Todos los clientes</option>${s.clients.map(c=>`<option value="${c.id}" ${c.id===s.historyClient?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label><button class="btn btn-small" data-action="history-export" ${a.stats?'':'disabled'}>↓ Exportar análisis</button></div>`;
+ const estimated=Number(st.estimated_rows||0),count=Number(st.records||0);
+ const maxTrend=Math.max(1,...trend.map(t=>Number(t.cost)||0));
+ const plot=trend.length?`<div class="analytics-chart" role="img" aria-label="Evolución de costos de preparaciones">${trend.map(t=>`<div class="analytics-bar-group" title="${esc(t.period)} · ${esc(money(t.cost))} · ${esc(t.records)} registros"><div class="analytics-bar-figure">${Number(t.cost)?`<div class="analytics-bar" style="height:${Math.max(4,percentage(t.cost,maxTrend))}%"></div>`:'<span class="analytics-zero"></span>'}</div><small>${esc(String(t.period).slice(5))}</small></div>`).join('')}</div>`:'<p class="empty">Aún no hay preparaciones para este período.</p>';
+ const importPreview=preview?`<section class="panel history-preview"><div class="panel-head"><h3>Vista previa · ${esc(preview.fileName)}</h3><span class="tag ${preview.errors.length?'orange':'green'}">${preview.records.length} filas válidas</span></div>${preview.errors.length?`<div class="notice analytics-warning"><b>${preview.errors.length} error(es) encontrados:</b><ul>${preview.errors.slice(0,15).map(e=>`<li>${esc(e)}</li>`).join('')}</ul>${preview.errors.length>15?'<p>Corrige todos los registros señalados en el archivo.</p>':''}</div>`:''}<p class="hint">Estimaciones por precio actual: ${preview.estimated} líneas. Valor aproximado: ${money(preview.totalCost)}. Los precios que no vienen en el archivo se valoran con el catálogo vigente.</p><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Insumo</th><th>Cantidad</th><th>Precio</th></tr></thead><tbody>${preview.records.slice(0,8).map(v=>`<tr><td>${esc(v.date)}</td><td>${esc(v.client_name)}</td><td>${esc(v.sku)}</td><td>${v.quantity}</td><td>${money(v.unit_price)} ${v.price_origin==='catalog'?'<small>(estimado)</small>':''}</td></tr>`).join('')}</tbody></table></div><div class="actions"><button class="btn btn-primary" data-action="history-save" ${preview.errors.length||!preview.records.length?'disabled':''}>Confirmar importación</button><button class="btn" data-action="history-discard">Cancelar vista previa</button></div></section>`:'';
+ return `${header('Preparaciones históricas','Información privada del administrador · No modifica stock ni solicitudes.', '<button class="btn btn-small" data-action="history-template">↓ Plantilla Excel</button>')}
+ <section class="panel history-import"><div class="panel-head"><h3>Cargar un historial anterior</h3><span class="tag">Solo administrador</span></div><p>Carga un Excel o CSV con <b>FECHA, CLIENTE, CODIGO y CANTIDAD</b>. Opcional: PRECIO UNITARIO, DOCUMENTO, PREPARADO POR y OBSERVACION.</p><div class="history-upload-actions"><input type="file" id="historyFile" accept=".xlsx,.csv,.tsv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-label="Seleccionar archivo de preparaciones"/><button class="btn btn-primary" data-action="history-preview" ${s.historyUploading?'disabled':''}>Revisar archivo</button></div><p class="hint">El archivo se revisa primero. Si falta el precio histórico, se usa el actual y queda marcado como <b>estimado</b>. Solo tu perfil puede consultar estos valores. Evita subir el mismo archivo dos veces.</p></section>
+ ${importPreview}
+ ${controls}
+ ${s.historyLoading?'<section class="panel"><p class="empty">Actualizando análisis histórico…</p></section>':`<div class="stats analytics-stats">${[
+  stat('Preparaciones registradas',analyticsN(count),'count','Filas históricas'),
+  stat('Valor total preparado',money(st.cost),'analytics','CLP · incluye estimaciones'),
+  stat('Clientes',analyticsN(st.clients),'clients','Con preparaciones en el período'),
+  stat('Líneas estimadas',analyticsN(estimated),'warning','Precio actual, no necesariamente histórico')].join('')}</div>
+ ${estimated?`<div class="notice analytics-warning">De ${count} registros, ${estimated} usan el precio vigente del catálogo. ${money(st.estimated_cost)} es valor estimado y no debe interpretarse como costo histórico comprobado.</div>`:''}
+ ${!count?'<div class="notice purple">Todavía no hay preparaciones importadas en el período. Puedes comenzar con la plantilla Excel o cambiar el filtro a «Todo el historial».</div>':''}
+ <section class="panel"><div class="panel-head"><h3>Evolución de preparaciones</h3><span class="hint">Valor CLP · por fecha preparada</span></div>${plot}</section>
+ <div class="cards-2 analytics-columns"><section class="panel"><h3>Valor preparado por cliente</h3><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Registros</th><th>Valor CLP</th></tr></thead><tbody>${clients.slice(0,50).map(c=>`<tr><td>${esc(c.name)}</td><td>${analyticsN(c.records)}</td><td>${money(c.cost)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Sin datos</td></tr>'}</tbody></table></div></section>
+ <section class="panel"><h3>Insumos preparados</h3><div class="table-wrap"><table><thead><tr><th>Insumo</th><th>Cantidad</th><th>Valor CLP</th></tr></thead><tbody>${products.slice(0,70).map(p=>`<tr><td><b>${esc(p.sku)}</b><br><small>${esc(p.name)}</small></td><td>${analyticsN(p.quantity)} ${esc(p.unit)}</td><td>${money(p.cost)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Sin datos</td></tr>'}</tbody></table></div></section></div>
+ <section class="panel"><div class="panel-head"><h3>Últimos registros</h3><span class="hint">Máximo 100 filas del período</span></div><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Código</th><th>Cantidad</th><th>Precio</th></tr></thead><tbody>${recent.map(v=>`<tr><td>${esc(v.date)}</td><td>${esc(v.client)}</td><td>${esc(v.sku)}</td><td>${analyticsN(v.quantity)} ${esc(v.unit)}</td><td>${money(v.unit_price)}${v.price_origin==='catalog'?' <small>(estimado)</small>':''}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Sin registros</td></tr>'}</tbody></table></div></section>
+ <section class="panel"><div class="panel-head"><h3>Archivos importados</h3><span class="tag">${batches.length} lote(s)</span></div><div class="table-wrap"><table><thead><tr><th>Archivo</th><th>Registros</th><th>Importado</th><th>Acción</th></tr></thead><tbody>${batches.map(b=>`<tr><td>${esc(b.file_name)}</td><td>${analyticsN(b.row_count)}</td><td>${fmtDate(b.created_at)}</td><td><button class="btn btn-small" data-action="history-delete" data-id="${esc(b.id)}">Anular</button></td></tr>`).join('')||'<tr><td colspan="4" class="empty">Ninguna importación registrada</td></tr>'}</tbody></table></div><p class="hint">Si importaste un archivo incorrecto, puedes anular el lote completo y subirlo corregido. Esto no altera el inventario.</p></section>
+ <section class="panel analytics-notes"><h3>Dos historiales, sin mezclar datos</h3><p><b>Preparaciones históricas:</b> muestran cantidades que se prepararon según tu Excel, sin asumir que fueron despachadas. <b>Consumo y costos:</b> sigue mostrando únicamente las solicitudes aprobadas en la aplicación. No sumamos ambas cifras para evitar duplicados.</p><button class="btn btn-small" data-page="analytics">Ver consumo de la aplicación</button></section>`}`;
+}
+async function loadPreparedHistory(){
+ if(!isAdmin())return;
+ s.historyLoading=true;render();
+ try{
+  const [a,b]=await Promise.all([
+   rpc('admin_prepared_history_analytics',{p_days:s.historyDays,p_client_id:s.historyClient||null}),
+   sb.from('prepared_import_batches').select('id,file_name,row_count,created_at').order('created_at',{ascending:false}).limit(100)
+  ]);
+  if(b.error)throw b.error;s.historyAnalytics=a;s.historyBatches=b.data||[];
+ }catch(e){fail(e)}finally{s.historyLoading=false;render()}
+}
+async function previewPreparedFile(){
+ if(!isAdmin())throw Error('Solo el administrador puede cargar históricos');
+ const file=$('historyFile')?.files?.[0];if(!file)throw Error('Selecciona un archivo Excel o CSV');
+ s.historyUploading=true;
+ try{
+  const parsed=await readPreparationFile(file);
+  s.historyPreview=historyFilePreview(parsed,file.name);
+  render();toast(s.historyPreview.errors.length?'Revisa los errores antes de importar':'Archivo validado. Confirma para guardarlo.',Boolean(s.historyPreview.errors.length));
+ }finally{s.historyUploading=false;}
+}
+async function savePreparedFile(){
+ if(!isAdmin()||!s.historyPreview||s.historyPreview.errors.length)throw Error('Debes revisar un archivo válido antes de importarlo');
+ if(s.historyUploading)return;
+ const v=s.historyPreview;
+ s.historyUploading=true;
+ try{
+  const result=await rpc('admin_import_prepared_history',{
+   p_file_name:v.fileName,p_sha256:v.sha,p_rows:v.records.map(r=>({date:r.date,client_id:r.client_id,product_id:r.product_id,sku:r.sku,quantity:r.quantity,
+       unit_price:r.price_origin==='file'?r.unit_price:null,price_origin:r.price_origin,document_no:r.document_no,preparer:r.preparer,notes:r.notes}))
+  });
+  s.historyPreview=null;s.historyDays=0;
+  await loadPreparedHistory();toast('Importadas '+result.imported+' preparaciones. No se modificó el stock.');
+ }finally{s.historyUploading=false;}
+}
+async function deletePreparedBatch(id){
+ if(!isAdmin())throw Error('Solo el administrador puede anular importaciones');
+ const b=s.historyBatches.find(b=>b.id===id);if(!b)throw Error('Archivo no encontrado');
+ if(!window.confirm('¿Anular las '+b.row_count+' filas de «'+b.file_name+'»? Esto elimina ese historial importado sin tocar el stock.'))return;
+ const removed=await rpc('admin_delete_prepared_batch',{p_batch_id:id});await loadPreparedHistory();toast(removed+' registros anulados.');
+}
+function downloadHistoryTemplate(){
+ if(!isAdmin())return;
+ const lines=[['FECHA','CLIENTE','CODIGO','CANTIDAD','PRECIO UNITARIO','DOCUMENTO','PREPARADO POR','OBSERVACION']];
+ const guide=[['CAMPO','DESCRIPCION'],['FECHA','Obligatoria. Ej.: 2026-10-05 o 05/10/2026'],['CLIENTE','Nombre exacto de un cliente ya registrado en la app'],['CODIGO','Código del catálogo, por ejemplo ETQ0010'],['CANTIDAD','Cantidad positiva: rollos para etiquetas; unidades para otros insumos'],['PRECIO UNITARIO','Opcional; si está vacío se estima con el precio actual'],['DOCUMENTO','Opcional; folio, guía o referencia'],['PREPARADO POR','Opcional; responsable que preparó'],['OBSERVACION','Opcional; aclaraciones'],['AVISO','Datos históricos preparados: no cambian inventario ni solicitudes.']];
+ downloadBlob(makeXlsx([{name:'Preparaciones',rows:lines},{name:'Instrucciones',rows:guide}]),'Plantilla_Preparaciones_Historicas.xlsx');
+}
+function downloadHistoryReport(){
+ if(!isAdmin()||!s.historyAnalytics?.stats)throw Error('No hay análisis histórico para exportar');
+ const a=s.historyAnalytics,st=a.stats,cs=a.clients||[],ps=a.products||[],trend=a.trend||[],latest=a.latest||[];
+ downloadBlob(makeXlsx([
+  {name:'Resumen',rows:[['INDICADOR','VALOR'],['Desde',a.from],['Hasta',a.to],['Cliente',client(a.client_id)?.name||'Todos'],['Registros',Number(st.records)||0],['Valor CLP',Number(st.cost)||0],['Filas estimadas',Number(st.estimated_rows)||0],['Costo estimado CLP',Number(st.estimated_cost)||0]]},
+  {name:'Clientes',rows:[['CLIENTE','REGISTROS','COSTO CLP','FILAS ESTIMADAS'],...cs.map(c=>[c.name,Number(c.records),Number(c.cost),Number(c.estimated_rows)])]},
+  {name:'Insumos',rows:[['CODIGO','INSUMO','UNIDAD','CANTIDAD','VALOR CLP','PRECIO PROMEDIO','ESTIMADAS'],...ps.map(p=>[p.sku,p.name,p.unit,Number(p.quantity),Number(p.cost),Number(p.average_price),Number(p.estimated_rows)])]},
+  {name:'Evolucion',rows:[['PERIODO','VALOR CLP','REGISTROS'],...trend.map(v=>[v.period,Number(v.cost),Number(v.records)])]},
+  {name:'Ultimos 100',rows:[['FECHA','CLIENTE','CODIGO','INSUMO','UNIDAD','CANTIDAD','PRECIO CLP','VALOR CLP','ORIGEN PRECIO','DOCUMENTO','PREPARADO POR','OBSERVACION'],...latest.map(v=>[v.date,v.client,v.sku,v.name,v.unit,Number(v.quantity),Number(v.unit_price),Number(v.cost),v.price_origin==='catalog'?'ESTIMADO':'ARCHIVO',v.document_no,v.preparer,v.notes])]}
+ ]),`Preparaciones_Historicas_${a.from}_${a.to}.xlsx`);
+ toast('Análisis histórico descargado');
+}
+
 function analyticsPage(){
  if(!isAdmin())return home();
  const a=s.analytics||{},stats=a.stats||{},prev=a.previous||{};
@@ -234,7 +396,7 @@ function showProfile(){
  openModal('Mi perfil',`<div class="profile-menu-header"><span class="profile-menu-avatar">${initial}</span><div><strong>${name}</strong><small>ID ${esc(s.profile.employee_id||'—')}</small>${badgeText}</div></div><div class="profile-menu-actions">${actions}<button type="button" class="profile-menu-action profile-menu-logout" data-action="logout">${glyph('logout')}<span><b>Cerrar sesión</b><small>Salir de esta cuenta de forma segura</small></span><span class="profile-menu-arrow">›</span></button></div>`);
 }
 function render(){if(!configured){setup();return}if(!s.session){login();return}if(!s.profile||!s.profile.active){pending();return}shell()}
-const openPage=p=>{s.page=p;s.modal=null;render();window.scrollTo({top:0,behavior:'instant'})};
+const openPage=p=>{s.page=p;s.modal=null;render();window.scrollTo({top:0,behavior:'instant'});if(p==='history'&&isAdmin())loadPreparedHistory()};
 async function refresh({silent=false}={}){
  if(!sb||loading)return;
  loading=true;
@@ -373,6 +535,8 @@ root.addEventListener('change',e=>{
  if(e.target.dataset.filter==='orders'){s.filter=e.target.value;render()}
   if(e.target.id==='analyticsDays'){s.analyticsDays=Number(e.target.value);loadAnalytics();return}
   if(e.target.id==='analyticsClient'){s.analyticsClient=e.target.value;loadAnalytics();return}
+  if(e.target.id==='historyDays'){s.historyDays=Number(e.target.value);loadPreparedHistory();return}
+  if(e.target.id==='historyClient'){s.historyClient=e.target.value;loadPreparedHistory();return}
   if(e.target.id==='reportFrom'){s.reportFrom=e.target.value;render()}
  if(e.target.id==='reportTo'){s.reportTo=e.target.value;render()}
  if(e.target.id==='requestClient')s.clientId=e.target.value;
@@ -431,6 +595,12 @@ root.addEventListener('click',async e=>{
  case 'cart-remove':s.cart=s.cart.filter(x=>x.product_id!==id);render();break;
  case 'send-order':await sendOrder();break;
  case 'analytics-xlsx':downloadAnalyticsExcel();break;
+   case 'history-template':downloadHistoryTemplate();break;
+   case 'history-preview':await previewPreparedFile();break;
+   case 'history-save':await savePreparedFile();break;
+   case 'history-discard':s.historyPreview=null;render();break;
+   case 'history-export':downloadHistoryReport();break;
+   case 'history-delete':await deletePreparedBatch(id);break;
  case 'xlsx':downloadExcel();break;
  case 'download-note':await downloadNote(id);break;
  case 'print-report':printReport();break;
