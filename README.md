@@ -1,4 +1,4 @@
-# Insumos Central Retiros · v2.2.0
+# Insumos Central Retiros · v2.2.1
 
 ## Preparaciones históricas privadas
 - Importación por Excel `.xlsx` o CSV/TSV desde **Preparaciones anteriores** (solo administrador).
@@ -14,3 +14,9 @@ Sube los **12 archivos** de este ZIP a la raíz de tu repositorio GitHub y en Re
 
 ### Seguridad
 No compartas el historial importado con solicitantes. El contenido histórico y los importes solo se consultan mediante credenciales del administrador.
+
+
+### Cambio v2.2.1
+- El menú del computador tiene desplazamiento independiente cuando su contenido no cabe en la pantalla.
+- Se añadió un acceso directo **Historial** en el encabezado de escritorio, que abre **Preparaciones anteriores**.
+- No requiere cambios de Supabase ni recargar las 693 entregas históricas.
