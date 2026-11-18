@@ -1,19 +1,22 @@
-# Insumos Central Retiros · v1.4 FLUID
+# Insumos Central Retiros v1.7 — Administrador también solicita
 
-Diseño alternativo a las tarjetas cuadradas: cabecera de formas orgánicas, medidor circular, métricas abiertas, accesos tipo cápsula y navegación móvil flotante. Incluye todas las funciones de la v1.3, incluido login por ID.
+## Mejora
+- El administrador puede crear solicitudes desde **Solicitar**, igual que un solicitante.
+- La solicitud se registra a nombre del administrador, queda pendiente y reserva stock.
+- El administrador mantiene acceso a aprobaciones, inventario, insumos, clientes, personal, reportes y PDF de salida.
+- Acceso rápido **Solicitar insumos** en Inicio.
+- La barra inferior de celular incluye **Solicitar** y el menú **Más** conserva Personal, Clientes, Insumos y Reportes.
+- La vista de Solicitudes muestra **Nueva solicitud** al administrador.
 
-Esta actualización cambia la apariencia visual; no recrea la base de datos ni modifica las reglas de inventario, solicitudes o precios. Las URLs de Supabase y la clave publicable están en `config.js`. No incluya claves secretas.
+## Incluye también las mejoras anteriores
+- Login por ID y PIN de cuatro dígitos para solicitantes.
+- Comprobante PDF A4 en blanco y negro, sin firmas.
 
 ## Publicación
-1. Descomprima el ZIP.
-2. En GitHub, `KvinEspinoza555/insumos-central-retiros` > Add file > Upload files.
-3. Suba los 10 archivos de esta carpeta a la raíz (no el ZIP), reemplazando las versiones anteriores.
-4. Haga Commit changes. Render está configurado para publicar desde main; si no detecta el cambio, elija Manual Deploy > Deploy latest commit.
-5. Abra la app con recarga sin caché. Si estaba instalada, cierre y reabra o reinstale cuando sea necesario.
+Descomprime el ZIP y sube sus 11 archivos a la raíz de GitHub `KvinEspinoza555/insumos-central-retiros`, reemplazando los anteriores. Confirma con **Commit changes**. Si Render no despliega automáticamente, ejecuta **Manual Deploy → Deploy latest commit**.
 
-## Notas importantes
-- Los usuarios ingresan con su ID numérico y contraseña. El administrador que aún no tenga ID puede usar la opción de configuración inicial y asignárselo desde Personal.
-- La seguridad real se aplica en la base de datos, mediante RLS y funciones de Supabase. La apariencia no otorga nuevos permisos.
-- El acceso por ID y la creación de personal usan Edge Functions ya desplegadas en el proyecto Supabase existente.
-- Antes de ingresar datos laborales sensibles, probar el flujo solicitante -> administrador -> aprobación/rechazo.
-- Capturas de vista previa con contenido ficticio; no representan información real.
+## Notas
+- No requiere migraciones adicionales ni cambiar el rol del administrador. La función `submit_order` ya admite usuarios administradores activos.
+- Solo puede enviarse una solicitud cuando existen insumos con stock disponible.
+- La solicitud del administrador queda pendiente y se tramita desde **Solicitudes** como cualquier otra solicitud.
+- No subas a GitHub la planilla con ID/PIN de los trabajadores.
