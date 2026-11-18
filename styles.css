@@ -542,3 +542,31 @@ textarea{border-radius:20px;}
 .count-difference.equal{background:#EDF6EF;color:#397C5A;}
 @media(max-width:860px){.alert-summary{grid-template-columns:repeat(2,minmax(0,1fr));}.alert-counter{font-size:28px;}}
 @media(max-width:550px){.alert-summary{gap:7px;}.alert-summary>div{padding:15px 11px;}.alert-list-row{gap:9px;flex-wrap:wrap;}.alert-quantity{min-width:65px;font-size:19px;}.alert-list-row>.btn{margin-left:auto;}.alert-home-strip{padding:14px 16px;border-radius:24px;}.alert-home-strip b{font-size:11px;}.alert-home-strip span:last-child{font-size:10px;}}
+
+/* Consumo y costos v1.9 — módulo exclusivo de administración */
+.analytics-filters{display:flex;align-items:end;gap:11px;flex-wrap:wrap;background:#FFF;border:1px solid #EAE6F0;padding:17px 19px;border-radius:23px;margin-bottom:12px;box-shadow:0 6px 22px #37294705}
+.analytics-filters label{display:grid;gap:6px;margin:0;font-size:11px;min-width:155px;flex:1;max-width:340px}
+.analytics-filters select{min-height:44px;width:100%}
+.analytics-filters .btn{min-height:44px}
+.analytics-period{font-size:11px;color:#84778D;margin:0 0 15px;padding-left:4px}
+.analytics-stats .stat strong{font-size:clamp(20px,2.7vw,30px);overflow-wrap:anywhere}
+.analytics-stats .stat small{font-size:11px;line-height:1.5}
+.analytics-chart{display:flex;gap:clamp(5px,.9vw,17px);height:223px;align-items:end;overflow-x:auto;max-width:100%;padding:18px 5px 4px;scrollbar-width:thin}
+.analytics-bar-group{min-width:30px;max-width:95px;flex:1;height:100%;display:flex;flex-direction:column;align-items:center;gap:7px;color:#8B8095}
+.analytics-bar-group small{font-size:10px;white-space:nowrap;line-height:1.3;font-variant-numeric:tabular-nums}
+.analytics-bar-figure{height:168px;align-items:end;display:flex;width:100%;justify-content:center;position:relative;border-bottom:1px solid #EAE5F0}
+.analytics-bar{width:min(100%,44px);background:linear-gradient(180deg,#8963AD,#5E4085);border-radius:10px 10px 3px 3px;min-height:5px;box-shadow:0 5px 14px #67488D18}
+.analytics-zero{width:11px;height:3px;border-radius:4px;background:#DED9E5;margin-bottom:1px}
+.analytics-columns{align-items:start;gap:15px}
+.analytics-columns .panel{min-width:0}
+.analytics-columns .panel-head{flex-wrap:wrap;gap:8px}
+.analytics-columns table th,.analytics-columns table td{font-size:12px}
+.analytics-columns td small{font-size:10px}
+.analytics-row-track{height:4px;width:100%;margin-top:8px;border-radius:4px;background:#F0ECF4;overflow:hidden}
+.analytics-row-track>div{height:100%;background:#8E70B1;border-radius:4px}
+.analytics-warning{background:#FFF7ED!important;border:1px solid #F5DFCB!important;color:#95673B!important;margin-bottom:14px;line-height:1.6}
+.analytics-empty{margin-bottom:18px}
+.analytics-notes h3{margin-bottom:8px}
+.analytics-notes p{color:#777180;font-size:12px;line-height:1.75;max-width:760px}
+.analytics-notes .btn{margin-top:10px}
+@media(max-width:760px){.analytics-filters{padding:13px;gap:8px}.analytics-filters label{min-width:130px;max-width:none;flex:1}.analytics-filters .btn{width:100%}.analytics-chart{height:192px}.analytics-bar-figure{height:138px}.analytics-bar-group{min-width:26px}.analytics-stats .stat strong{font-size:21px}.analytics-columns{grid-template-columns:1fr}.analytics-row-track{max-width:180px}}

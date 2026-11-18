@@ -22,6 +22,7 @@ function glyph(kind){
  clients:'<path d="M4 21V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v15M3 21h18M8 9h2m3 0h1M8 13h2m3 0h1M8 17h2m3 0h1M17 11h2a2 2 0 0 1 2 2v8"/>',
  people:'<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M17 14c2.4 0 4 1.6 4 4v2"/>',
  reports:'<path d="M4 20h16M6 17v-5M12 17V7M18 17v-8"/>',
+ analytics:'<path d="M3 3v18h18M7 17v-5M12 17V7M17 17v-9M21 5l-4-2-5 3-5-2"/>',
  new:'<path d="M12 4v16M4 12h16"/>',
  warning:'<path d="m11.1 4-8.4 14.5a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L12.9 4a1 1 0 0 0-1.8 0z"/><path d="M12 9v5M12 18h.01"/>',
  check:'<path d="M5 12l4 4L19 6"/>',
@@ -33,7 +34,7 @@ function glyph(kind){
  const name=paths[kind]?kind:(fallback[kind]||"home");
  return '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths[name]+'</svg>';
 }
-const s={page:'home',profile:null,session:null,clients:[],products:[],prices:[],profiles:[],invites:[],assignments:[],orders:[],lines:[],linePrices:[],movements:[],deliveryNotes:[],counts:[],alerts:null,cart:[],register:false,busy:false,filter:'all',reportFrom:'',reportTo:'',modal:null};
+const s={page:'home',profile:null,session:null,clients:[],products:[],prices:[],profiles:[],invites:[],assignments:[],orders:[],lines:[],linePrices:[],movements:[],deliveryNotes:[],counts:[],alerts:null,analytics:null,analyticsDays:30,analyticsClient:'',analyticsLoading:false,cart:[],register:false,busy:false,filter:'all',reportFrom:'',reportTo:'',modal:null};
 let realtime=null,syncTimer=null,interval=null,lastSync=0,loading=false;
 const isAdmin=()=>s.profile?.role==='admin' && s.profile?.active;
 const product=id=>s.products.find(p=>p.id===id);
@@ -53,12 +54,12 @@ function spinner(){root.innerHTML='<main class="loading-screen"><div class="spin
 function setup(){root.innerHTML=`<main class="loading-screen"><div class="setup-card">${brand}<div class="divider"></div><span class="eyebrow">Falta conectar la base de datos</span><h2>Versión lista para sincronizar</h2><p>El diseño y las pantallas ya están preparados. Para activar los datos reales, necesitamos crear un proyecto gratuito en Supabase y completar <code>config.js</code> con la URL y la clave <b>publicable</b>.</p><div class="notice">No ingreses usuarios ni información laboral mientras la conexión no esté configurada.</div></div></main>`}
 function login(){root.innerHTML=`<div class="login-wrap"><section class="login-visual">${brand}<div class="hero-text"><h1>El control de insumos, <em>sin complicaciones.</em></h1><p>Una forma sencilla de organizar solicitudes, inventario y entregas. Todo conectado, sin perder claridad.</p></div><div class="hero-perks"><span>Stock compartido</span><span>Gestión simple</span><span>Móvil y escritorio</span></div></section><section class="login-body"><div class="login-card"><span class="eyebrow">Acceso al sistema</span><h2>${s.register?'Configuración inicial':'Bienvenido'}</h2><p>${s.register?'Utiliza el correo de tu cuenta administradora únicamente para asignar tu primer número de ID.':'Ingresa con tu ID y PIN de 4 números. Los administradores usan su contraseña.'}</p><form data-form="${s.register?'signin-admin-setup':'signin'}"><div class="field"><label>${s.register?'Correo de administrador (solo primera vez)':'Número de ID'}</label><input name="${s.register?'email':'employee_id'}" ${s.register?'type="email" autocomplete="email"':'type="text" inputmode="numeric" pattern="[0-9]{1,16}" maxlength="16" autocomplete="username"'} required placeholder="${s.register?'administrador@empresa.com':'Ej.: 1234567'}"></div><div class="field"><label>Contraseña</label><input name="password" required minlength="${s.register?8:4}" type="password" autocomplete="current-password" placeholder="${s.register?'Contraseña':'PIN (solicitante) o contraseña (administrador)'}"></div><button type="submit" class="btn btn-primary btn-full">Ingresar</button></form><button class="link" data-action="switch-auth">${s.register?'Volver al acceso con número de ID':'¿Eres el administrador y aún no tienes ID? Configurarlo'}</button><div class="card-note">🔒 Los precios, el inventario y las aprobaciones tienen permisos separados. Tu número de ID es único.</div></div></section></div>`}
 function pending(){root.innerHTML=`<main class="loading-screen"><div class="setup-card">${brand}<div class="divider"></div><span class="eyebrow">Acceso pendiente</span><h2>Tu cuenta aún no está autorizada</h2><p>Solicita al administrador la activación de tu cuenta y número de ID.</p><button class="btn btn-primary" data-action="logout">Cerrar sesión</button></div></main>`}
-const NAVADMIN=[['home','Inicio','▦'],['new','Solicitar','＋'],['orders','Solicitudes','▤'],['alerts','Alertas','bell'],['inventory','Inventario','▥'],['products','Insumos','▧'],['clients','Clientes','◈'],['people','Personal','♙'],['reports','Reportes','▨']];
+const NAVADMIN=[['home','Inicio','▦'],['new','Solicitar','＋'],['orders','Solicitudes','▤'],['alerts','Alertas','bell'],['inventory','Inventario','▥'],['products','Insumos','▧'],['clients','Clientes','◈'],['people','Personal','♙'],['analytics','Consumo y costos','analytics'],['reports','Reportes','▨']];
 const NAVUSER=[['home','Inicio','▦'],['new','Solicitar','＋'],['orders','Mis solicitudes','▤']];
 function shell(){const nav=isAdmin()?NAVADMIN:NAVUSER;const cur=nav.find(x=>x[0]===s.page)||nav[0];root.innerHTML=`<div class="app-shell"><aside class="sidebar">${brand}<nav class="side-nav">${nav.map(([k,name,ico])=>`<button class="nav-btn ${s.page===k?'active':''}" data-page="${k}"><span class="nav-ico">${glyph(k)}</span>${name}</button>`).join('')}</nav><div class="sidebar-foot"><strong>${esc(s.profile.full_name||'Usuario')}</strong><p>ID: ${esc(s.profile.employee_id||'Sin asignar')}</p><span class="tag">${isAdmin()?'Administrador':'Solicitante'}</span><p style="margin-top:15px"><button class="btn btn-small" data-action="change-password">${isAdmin()?'Cambiar contraseña':'Cambiar PIN'}</button> <button class="btn btn-small" data-action="logout">Cerrar sesión</button></p></div></aside><div class="main"><header class="topbar"><div><h1>${esc(cur[1])}</h1><p>Central Retiros · ${isAdmin()?'Administración':'Mis solicitudes'}</p></div><div class="topright">${isAdmin()?`<button class="alert-bell" data-page="alerts" title="Ver alertas" aria-label="Ver alertas">${glyph("bell")}${alertBadgeCount()?`<b>${Math.min(99,alertBadgeCount())}</b>`:""}</button>`:""}<span class="tag green">● En línea</span><button class="btn btn-small" data-action="refresh" title="Actualizar">↻ <span class="only-desktop">Actualizar</span></button><button class="avatar" data-action="change-password" title="Cambiar contraseña">${esc((s.profile.full_name||'U')[0]).toUpperCase()}</button></div></header><main class="content">${renderPage()}<div class="foot-note">Insumos Central Retiros · Stock compartido · Acceso protegido</div></main></div></div><nav class="mobile-nav">${(isAdmin()?[['home','Inicio','▦'],['new','Solicitar','＋'],['orders','Pedidos','▤'],['inventory','Stock','▥']]:NAVUSER).map(([k,name,ico])=>`<button data-page="${k}" class="${s.page===k?'active':''}"><span>${glyph(k)}</span>${name}</button>`).join('')}${isAdmin()?`<button data-action="more"><span>${glyph("more")}</span>Más</button>`:""}</nav>`;if(s.modal)renderModal()}
 function header(title,subtitle,extra=''){return `<div class="intro"><div><h2>${title}</h2><p>${subtitle}</p></div><div class="actions">${extra}</div></div>`}
 function stat(label,value,ico,sub='',orange=false){return `<div class="stat ${orange?'orange':''}"><div class="emoji">${glyph(ico)}</div><label>${label}</label><strong>${value}</strong><small>${sub}</small></div>`}
-function renderPage(){switch(s.page){case 'home':return home();case 'new':return requestPage();case 'orders':return ordersPage();case 'alerts':return alertsPage();case 'inventory':return inventoryPage();case 'products':return productsPage();case 'clients':return clientsPage();case 'people':return peoplePage();case 'reports':return reportsPage();default:return home()}}
+function renderPage(){switch(s.page){case 'home':return home();case 'new':return requestPage();case 'orders':return ordersPage();case 'alerts':return alertsPage();case 'inventory':return inventoryPage();case 'products':return productsPage();case 'clients':return clientsPage();case 'people':return peoplePage();case 'reports':return reportsPage();case 'analytics':return analyticsPage();default:return home()}}
 
 function alertBadgeCount(){
  if(!isAdmin()||!s.alerts)return 0;
@@ -100,7 +101,7 @@ function home(){
   ['Historial',s.orders.length,'Solicitudes realizadas']
  ];
  const actions=admin?[
-  ['new','Solicitar insumos','new'],['alerts','Ver alertas','bell'],['inventory','Ingresar stock','inventory'],['products','Nuevo insumo','products'],['people','Personal','people']
+  ['new','Solicitar insumos','new'],['alerts','Ver alertas','bell'],['inventory','Ingresar stock','inventory'],['products','Nuevo insumo','products'],['people','Personal','people'],['analytics','Consumo y costos','analytics']
  ]:[['new','Nueva solicitud','new'],['orders','Mis solicitudes','orders']];
  const stockList=(admin?s.products.filter(p=>p.active&&available(p)<=p.min_stock):s.products.filter(p=>p.active&&available(p)>0)).slice(0,6);
  const stockMarkup=stockList.length?stockList.map(p=>{
@@ -141,6 +142,63 @@ function inventoryPage(){
 function productsPage(){if(!isAdmin())return home();return `${header('Catálogo de insumos','Crea, edita y desactiva insumos. Los precios solo son visibles para ti.','<button class="btn btn-primary" data-action="product-new">＋ Agregar insumo</button>')}<section class="panel"><div class="table-wrap"><table><thead><tr><th>Código</th><th>Insumo</th><th>Unidad</th><th>Precio unitario</th><th>Estado</th><th>Editar</th></tr></thead><tbody>${s.products.map(p=>`<tr><td><b>${esc(p.sku)}</b></td><td>${esc(p.name)}</td><td>${esc(p.unit)}</td><td><b>${money(price(p.id))}</b></td><td><span class="tag ${p.active?'green':'red'}">${p.active?'Activo':'Inactivo'}</span></td><td><button class="btn btn-small" data-action="product-edit" data-id="${p.id}">Editar</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty">Sin insumos. Agrega el primero.</td></tr>'}</tbody></table></div></section>`}
 function clientsPage(){if(!isAdmin())return home();return `${header('Clientes','Agrega, modifica o desactiva los destinos de entrega.','<button class="btn btn-primary" data-action="client-new">＋ Agregar cliente</button>')}<section class="panel"><div class="table-wrap"><table><thead><tr><th>Nombre</th><th>Estado</th><th>Acción</th></tr></thead><tbody>${s.clients.map(c=>`<tr><td><b>${esc(c.name)}</b></td><td><span class="tag ${c.active?'green':'red'}">${c.active?'Activo':'Inactivo'}</span></td><td><button class="btn btn-small" data-action="client-edit" data-id="${c.id}">Editar</button></td></tr>`).join('')||'<tr><td colspan="3" class="empty">Sin clientes.</td></tr>'}</tbody></table></div></section>`}
 function peoplePage(){if(!isAdmin())return home();return `${header('Personal y accesos','Asigna un número de ID único y el perfil de cada trabajador.','<button class="btn btn-primary" data-action="invite-new">＋ Añadir personal</button>')}<section class="panel"><h3>Personal registrado</h3><p>Crea cada cuenta con nombre, ID y perfil. El PIN temporal aparece una sola vez.</p><div class="table-wrap" style="margin-top:16px"><table><thead><tr><th>Nombre</th><th>N.º de ID</th><th>Perfil</th><th>Estado</th><th>Acción</th></tr></thead><tbody>${s.profiles.map(p=>`<tr><td><b>${esc(p.full_name)}</b></td><td><strong>${esc(p.employee_id||'Sin asignar')}</strong></td><td>${p.role==='admin'?'Administrador':'Solicitante'}</td><td><span class="tag ${p.active?'green':'orange'}">${p.active?'Activo':'Pendiente'}</span></td><td><button class="btn btn-small" data-action="user-edit" data-id="${p.id}">Gestionar</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">Sin personal registrado.</td></tr>'}</tbody></table></div></section><section class="panel"><h3>Cómo funciona el ingreso</h3><p>El administrador asigna un ID numérico a cada persona. Los solicitantes ingresan con PIN de 4 números. Los administradores usan contraseña. Los números no pueden repetirse, y los IDs que empiezan con cero se conservan tal cual.</p></section>`}
+// Informe agregado desde Supabase: no depende del límite de filas del listado de pedidos.
+const analyticsNum=n=>Number(n)||0;
+const analyticsN=n=>new Intl.NumberFormat('es-CL',{maximumFractionDigits:0}).format(analyticsNum(n));
+const percentage=(value,largest)=>Math.min(100,Math.max(0,largest?100*analyticsNum(value)/largest:0));
+function analyticsPage(){
+ if(!isAdmin())return home();
+ const a=s.analytics||{},stats=a.stats||{},prev=a.previous||{};
+ const customers=Array.isArray(a.clients)?a.clients:[],products=Array.isArray(a.products)?a.products:[],trend=Array.isArray(a.trend)?a.trend:[];
+ const spend=analyticsNum(stats.cost),oldSpend=analyticsNum(prev.cost),deliveryCount=analyticsNum(stats.approvals),missing=analyticsNum(stats.no_price_lines);
+ const delta=oldSpend?((spend-oldSpend)/oldSpend*100):null;
+ const change=delta===null?'Sin base anterior':(delta>=0?'+':'')+delta.toLocaleString('es-CL',{maximumFractionDigits:1})+' % vs. período anterior';
+ const maxTrend=Math.max(1,...trend.map(x=>analyticsNum(x.cost))),maxClient=Math.max(1,...customers.map(x=>analyticsNum(x.cost)));
+ const from=String(a.from||''),to=String(a.to||'');
+ const periodLabel=s.analyticsDays===7?'Últimos 7 días':s.analyticsDays===30?'Últimos 30 días':s.analyticsDays===90?'Últimos 90 días':'Últimos 365 días';
+ const clientFilter=`<label>Cliente<select id="analyticsClient"><option value="">Todos los clientes</option>${s.clients.map(c=>`<option value="${c.id}" ${s.analyticsClient===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>`;
+ const controls=`<div class="analytics-filters"><label>Período<select id="analyticsDays">${[[7,'7 días'],[30,'30 días'],[90,'90 días'],[365,'12 meses']].map(([n,label])=>`<option value="${n}" ${s.analyticsDays===n?'selected':''}>${label}</option>`).join('')}</select></label>${clientFilter}<button class="btn btn-primary" data-action="analytics-xlsx" ${!a.stats?'disabled':''}>↓ Exportar Excel</button></div>`;
+ if(s.analyticsLoading||!a.stats){
+   return `${header('Consumo y costos','Solo administradores · Precios históricos al momento de aprobar.')}${controls}<section class="panel"><div class="empty">${s.analyticsLoading?'Actualizando análisis…':'Los datos del análisis no están disponibles. Selecciona otro período o actualiza.'}</div></section>`;
+ }
+ const formatPeriod=day=>{if(!day)return '';let d=String(day);return s.analyticsDays===365?d.slice(0,7):d.slice(5)};
+ const graph=trend.length?`<div class="analytics-chart" role="img" aria-label="Gráfico de costo por período">${trend.map(row=>`<div class="analytics-bar-group" title="${esc(String(row.period))}: ${esc(money(row.cost))} · ${analyticsN(row.orders)} solicitudes"><div class="analytics-bar-figure">${analyticsNum(row.cost)?`<div class="analytics-bar" style="height:${Math.max(4,percentage(row.cost,maxTrend))}%"></div>`:`<span class="analytics-zero"></span>`}</div><small>${esc(formatPeriod(row.period))}</small></div>`).join('')}</div>`:'<div class="empty">Sin movimientos para mostrar.</div>';
+ const clientRows=customers.slice(0,30).map(c=>`<tr><td><b>${esc(c.name)}</b><div class="analytics-row-track"><div style="width:${percentage(c.cost,maxClient)}%"></div></div></td><td>${analyticsN(c.orders)}</td><td><b>${money(c.cost)}</b></td></tr>`).join('');
+ const productRows=products.slice(0,60).map(p=>`<tr><td><b>${esc(p.sku)}</b><br><small>${esc(p.name)}</small></td><td>${analyticsN(p.quantity)} <small>${esc(p.unit)}</small></td><td>${money(p.average_price)}</td><td><b>${money(p.cost)}</b></td></tr>`).join('');
+ const emptyNotice=!deliveryCount?`<div class="notice purple analytics-empty">${s.products.length?'Aún no existen solicitudes aprobadas en este período. El análisis se llenará cuando se aprueben salidas.':'Primero registra los insumos con su precio desde la sección Insumos. Este panel comenzará a mostrar cifras después de aprobar solicitudes.'}</div>`:'';
+ return `${header('Consumo y costos','Análisis de salidas aprobadas · Precios protegidos, solo administradores.')}${controls}
+ <div class="analytics-period">${esc(periodLabel)} · ${esc(from)} al ${esc(to)} · Horario de Chile</div>
+ ${emptyNotice}
+ <div class="stats analytics-stats">
+ ${[stat('Costo acumulado',money(spend),'reports',change),stat('Solicitudes aprobadas',analyticsN(deliveryCount),'orders','No incluye pendientes'),stat('Clientes atendidos',analyticsN(stats.clients),'clients','Con salidas aprobadas'),stat('Líneas despachadas',analyticsN(stats.lines),'inventory','Cantidades separadas por insumo')].join('')}
+ </div>
+ ${missing?`<div class="notice analytics-warning">Atención: ${analyticsN(missing)} línea(s) aprobadas sin precio o con precio $0. El gasto informado puede estar subestimado. Revisa los precios en Insumos; los costos históricos utilizan la valoración guardada al aprobar.</div>`:''}
+ <section class="panel"><div class="panel-head"><h3>Evolución del gasto</h3><span class="hint">${s.analyticsDays===7?'Diario':s.analyticsDays===365?'Mensual':'Semanal'} · CLP</span></div>${graph}<p class="hint">Se contabiliza la fecha de aprobación, no la fecha de solicitud. El período anterior usa la misma cantidad de días.</p></section>
+ <div class="cards-2 analytics-columns"><section class="panel"><div class="panel-head"><h3>Costo por cliente</h3><span class="tag">${customers.length} cliente(s)</span></div><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Aprobadas</th><th>Costo CLP</th></tr></thead><tbody>${clientRows||'<tr><td colspan="3" class="empty">Sin salidas aprobadas.</td></tr>'}</tbody></table></div></section>
+ <section class="panel"><div class="panel-head"><h3>Consumo por insumo</h3><span class="tag">${products.length} insumo(s)</span></div><div class="table-wrap"><table><thead><tr><th>Insumo</th><th>Cantidad</th><th>Precio prom.</th><th>Costo CLP</th></tr></thead><tbody>${productRows||'<tr><td colspan="4" class="empty">Sin consumo registrado.</td></tr>'}</tbody></table></div><p class="hint">Los insumos pueden tener distintas unidades (rollos, cajas, etc.); por eso sus cantidades no se suman entre sí.</p></section></div>
+ <section class="panel analytics-notes"><h3>Cómo se calculan los costos</h3><p><b>Costo de línea = cantidad aprobada × precio unitario histórico.</b> Se suman únicamente solicitudes aprobadas. Los cambios posteriores de precio no modifican el historial.</p><button class="btn btn-small" data-page="reports">Ver reportes de salidas</button></section>`;
+}
+async function loadAnalytics(){
+ if(!isAdmin()||!sb)return;
+ s.analyticsLoading=true;s.analytics=null;render();
+ try{
+   const d=await rpc('admin_consumption_analytics',{p_days:s.analyticsDays,p_client_id:s.analyticsClient||null});
+   s.analytics=d;
+ }catch(e){fail(e)}finally{s.analyticsLoading=false;render()}
+}
+function downloadAnalyticsExcel(){
+ if(!isAdmin()||!s.analytics?.stats)throw Error('No hay análisis para exportar');
+ const a=s.analytics,st=a.stats,pr=a.previous||{},clients=a.clients||[],products=a.products||[],trend=a.trend||[];
+ const sheets=[
+  {name:'Resumen',rows:[['INDICADOR','VALOR'],['Desde',a.from],['Hasta',a.to],['Cliente',client(a.client_id)?.name||'Todos'],['Costo CLP',analyticsNum(st.cost)],['Costo previo CLP',analyticsNum(pr.cost)],['Aprobadas',analyticsNum(st.approvals)],['Aprobadas previas',analyticsNum(pr.approvals)],['Clientes',analyticsNum(st.clients)],['Líneas despachadas',analyticsNum(st.lines)],['Líneas sin precio',analyticsNum(st.no_price_lines)]]},
+  {name:'Clientes',rows:[['CLIENTE','APROBADAS','LÍNEAS','COSTO CLP','LÍNEAS SIN PRECIO'],...clients.map(c=>[c.name,analyticsNum(c.orders),analyticsNum(c.lines),analyticsNum(c.cost),analyticsNum(c.no_price_lines)])]},
+  {name:'Insumos',rows:[['CÓDIGO','INSUMO','UNIDAD','CANTIDAD','APROBADAS','COSTO CLP','PRECIO PROM.','SIN PRECIO'],...products.map(p=>[p.sku,p.name,p.unit,analyticsNum(p.quantity),analyticsNum(p.orders),analyticsNum(p.cost),analyticsNum(p.average_price),analyticsNum(p.no_price_lines)])]},
+  {name:'Evolucion',rows:[['PERÍODO','COSTO CLP','APROBADAS'],...trend.map(t=>[t.period,analyticsNum(t.cost),analyticsNum(t.orders)])]}
+ ];
+ downloadBlob(makeXlsx(sheets),`Consumo_y_Costos_${a.from}_${a.to}.xlsx`);
+ toast('Excel de consumo y costos descargado');
+}
+
 function reportsPage(){if(!isAdmin())return home();const r=reportRows();return `${header('Reportes de salidas','Excel semanal y comprobantes PDF desde Solicitudes.')}<div class="stats">${[stat('Entregas en período',new Set(r.map(x=>x.orderId)).size,'📄','Aprobaciones'),stat('Líneas de insumos',r.length,'📦','Artículos despachados'),stat('Costo total',money(r.reduce((n,x)=>n+x.total,0)),'▨','Solo administrador'),stat('Clientes atendidos',new Set(r.map(x=>x.client)).size,'🏢','Destinos')].join('')}</div><section class="panel"><div class="panel-head"><h3>Exportar movimientos</h3></div><div class="filters"><label>Desde<input type="date" id="reportFrom" value="${s.reportFrom}"></label><label>Hasta<input type="date" id="reportTo" value="${s.reportTo}"></label><button class="btn btn-primary" data-action="xlsx">↓ Descargar Excel</button><button class="btn" data-action="print-report">Imprimir / PDF</button></div><div class="notice purple">Excel con costos. PDF de salida sin precios, disponible al aprobar cada solicitud.</div><div class="table-wrap" style="margin-top:16px"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Insumo</th><th>Cantidad</th><th>Valor unit.</th><th>Total</th></tr></thead><tbody>${r.slice(0,50).map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.client)}</td><td>${esc(x.sku)} · ${esc(x.name)}</td><td>${x.qty}</td><td>${money(x.price)}</td><td>${money(x.total)}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">Sin salidas aprobadas en este período.</td></tr>'}</tbody></table></div></section>`}
 function reportRows(){return s.orders.filter(o=>o.status==='approved'&&o.decided_at).flatMap(o=>{const day=isoDay(o.decided_at);if(s.reportFrom&&day<s.reportFrom||s.reportTo&&day>s.reportTo)return [];return s.lines.filter(l=>l.order_id===o.id).map(l=>{const unit=s.linePrices.find(p=>p.order_line_id===l.id)?.unit_price??0;return {orderId:o.id,day,date:day.split('-').reverse().join('-'),client:client(o.client_id)?.name||'',sku:l.sku_snapshot,name:l.name_snapshot,qty:l.quantity,price:unit,total:l.quantity*unit}})}).sort((a,b)=>a.day.localeCompare(b.day))}
 function openModal(title,body,form='',submitLabel='Guardar',footer=''){
@@ -183,10 +241,10 @@ async function refresh({silent=false}={}){
    sb.from('profiles').select('*').order('full_name'),
    sb.from('user_clients').select('*'),
   ];
-  if(admin)queries.push(sb.from('product_prices').select('*'),sb.from('order_line_prices').select('*'),sb.from('invitations').select('*').order('created_at',{ascending:false}),sb.from('stock_movements').select('*').order('created_at',{ascending:false}).limit(150),sb.from('delivery_notes').select('*').order('id',{ascending:false}).limit(500),sb.from('inventory_counts').select('*').order('created_at',{ascending:false}).limit(150),sb.rpc('admin_supply_alerts'));
+  if(admin)queries.push(sb.from('product_prices').select('*'),sb.from('order_line_prices').select('*'),sb.from('invitations').select('*').order('created_at',{ascending:false}),sb.from('stock_movements').select('*').order('created_at',{ascending:false}).limit(150),sb.from('delivery_notes').select('*').order('id',{ascending:false}).limit(500),sb.from('inventory_counts').select('*').order('created_at',{ascending:false}).limit(150),sb.rpc('admin_supply_alerts'),sb.rpc('admin_consumption_analytics',{p_days:s.analyticsDays,p_client_id:s.analyticsClient||null}));
   const r=await Promise.all(queries);r.forEach(check);
   [s.clients,s.products,s.orders,s.lines,s.profiles,s.assignments]=r.slice(0,6).map(x=>x.data||[]);
-  [s.prices,s.linePrices,s.invites,s.movements,s.deliveryNotes,s.counts,s.alerts]=admin?r.slice(6).map((x,i)=>i===6?(x.data||null):(x.data||[])):[[],[],[],[],[],[],null];
+  [s.prices,s.linePrices,s.invites,s.movements,s.deliveryNotes,s.counts,s.alerts,s.analytics]=admin?r.slice(6).map((x,i)=>i>=6?(x.data||null):(x.data||[])):[[],[],[],[],[],[],null,null];
   s.cart=s.cart.filter(it=>{const p=product(it.product_id);return p?.active&&available(p)>=it.quantity});
   lastSync=Date.now();
   if(!s.reportFrom){const d=new Date();const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);s.reportFrom=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Santiago',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);s.reportTo=today()}
@@ -291,7 +349,9 @@ async function handleForm(form){const values=Object.fromEntries(new FormData(for
 root.addEventListener('submit',e=>{const f=e.target.closest('form[data-form]');if(!f)return;e.preventDefault();handleForm(f)});
 root.addEventListener('change',e=>{
  if(e.target.dataset.filter==='orders'){s.filter=e.target.value;render()}
- if(e.target.id==='reportFrom'){s.reportFrom=e.target.value;render()}
+  if(e.target.id==='analyticsDays'){s.analyticsDays=Number(e.target.value);loadAnalytics();return}
+  if(e.target.id==='analyticsClient'){s.analyticsClient=e.target.value;loadAnalytics();return}
+  if(e.target.id==='reportFrom'){s.reportFrom=e.target.value;render()}
  if(e.target.id==='reportTo'){s.reportTo=e.target.value;render()}
  if(e.target.id==='requestClient')s.clientId=e.target.value;
 });
@@ -343,6 +403,7 @@ root.addEventListener('click',async e=>{
  case 'cart-clear':s.cart=[];render();break;
  case 'cart-remove':s.cart=s.cart.filter(x=>x.product_id!==id);render();break;
  case 'send-order':await sendOrder();break;
+ case 'analytics-xlsx':downloadAnalyticsExcel();break;
  case 'xlsx':downloadExcel();break;
  case 'download-note':await downloadNote(id);break;
  case 'print-report':printReport();break;
@@ -385,11 +446,12 @@ boot().catch(fail);
 const xmlEsc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&quot;'}[c]));
 function sheetXml(rows,sheetName){
   const isDetail=sheetName==='Detalle semanal';
-  const widths=isDetail?[15,10,10,15,37,16,40,14,18,19,15]:sheetName==='Resumen clientes'?[36,16,40,15,20]:[16,40,15,20];
+  const sheetWidths={'Resumen':[30,25],'Clientes':[40,17,17,22,20],'Insumos':[18,43,17,16,20,22,20,20],'Evolucion':[20,23,20]};
+  const widths=isDetail?[15,10,10,15,37,16,40,14,18,19,15]:(sheetWidths[sheetName]||(sheetName==='Resumen clientes'?[36,16,40,15,20]:[16,40,15,20]));
   const columns=widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('');
   const content=rows.map((row,idx)=>`<row r="${idx+1}" ht="${idx===0?28:21}" customHeight="1">${row.map((v,col)=>{
     const ref=`${excelCol(col+1)}${idx+1}`;
-    const currency=idx>0&&(isDetail?(col===8||col===9):col===row.length-1);
+    const currency=idx>0&&(isDetail?(col===8||col===9):sheetName==='Clientes'?col===3:sheetName==='Insumos'?(col===5||col===6):sheetName==='Evolucion'?col===1:sheetName==='Resumen'?([4,5].includes(idx)&&col===1):col===row.length-1);
     const style=idx===0?(isDetail&&(col===4||col===7)?2:1):(currency?(idx%2===0?5:4):(idx%2===0?3:0));
     if(typeof v==='number'&&Number.isFinite(v)){
       const formula=(isDetail&&col===9&&idx>0)?`<f>H${idx+1}*I${idx+1}</f>`:'';

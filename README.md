@@ -1,32 +1,26 @@
-# Insumos Central Retiros v1.8 — Alertas y conteos físicos
+# Insumos Central Retiros v1.9 — Consumo y costos
 
-## Novedades
+## Nuevo módulo: Consumo y costos (solo administrador)
+- Navegación: **Consumo y costos**, también desde los accesos rápidos del Inicio y el menú Más en el móvil.
+- Analiza aprobaciones de los últimos **7, 30, 90 o 365 días**, con filtro por cliente.
+- Costo total CLP y comparación con el período anterior de igual duración.
+- Aprobaciones, clientes atendidos y número de líneas despachadas.
+- Evolución diaria (7 días), semanal (30/90) o mensual (365), sin inventar valores donde no hay datos.
+- Costo por cliente y ranking por insumo con cantidad/unidad, precio medio ponderado y costo.
+- Exportación a **Excel real de 4 hojas**: Resumen, Clientes, Insumos y Evolucion.
+- Aviso si alguna salida aprobada tiene precio $0 o no tiene precio histórico.
+- Se calculan las salidas **aprobadas**, no solicitudes pendientes ni entregas físicas confirmadas.
+- Se preserva el precio unitario capturado al aprobar cada salida; editar precios actuales no reescribe el histórico.
 
-**Alertas (solo administrador)**
-- Solicitudes pendientes y pendientes desde hace más de 24 horas.
-- Insumos agotados y con stock disponible menor o igual al mínimo configurado en Insumos.
-- Consumo inusual: últimos 7 días superiores a dos veces el promedio semanal de los 28 días anteriores. Solo si existe historial suficiente (al menos 4 unidades en ambos períodos).
-- Indicador de alerta en Inicio, botón de campana y nueva pantalla Alertas. Se actualiza al abrir/refrescar la app; **no** envía notificaciones push ni correos.
+## Backend
+Supabase ya incorpora la función segura `admin_consumption_analytics` (permisos admin; otros perfiles rechazados). Los cálculos se realizan en base de datos e incluyen todos los registros del período, no solo los primeros pedidos que aparecen en el listado de la interfaz. Las comparaciones y los días utilizan la zona horaria America/Santiago. No se alteran pedidos, stock, usuarios, clientes ni permisos existentes.
 
-**Inventario físico (solo administrador)**
-- Inventario → Contar o Nuevo conteo.
-- Compara stock registrado, unidades reservadas y cantidad física contada.
-- Exige una observación; registra fecha, administrador y diferencia, incluso si coincide el conteo.
-- Ajusta automáticamente existencias **solo por la diferencia**, dejando movimiento de stock.
-- Nunca permite reducir por debajo de reservas y rechaza el ajuste si otro movimiento modificó el stock desde que se abrió el formulario.
-- Historial de los últimos 150 conteos, solo en administración.
+Si no hay insumos y salidas aprobadas, el panel se mostrará correctamente vacío. No se crean datos ficticios.
 
-## Datos y seguridad
+## Publicación
+1. Descomprimir el ZIP y subir **los 11 archivos internos** a la raíz del repositorio `KvinEspinoza555/insumos-central-retiros`, reemplazando los anteriores.
+2. Hacer **Commit changes**.
+3. Render > servicio Insumos Central Retiros > **Manual Deploy → Deploy latest commit** si no se publicó solo.
+4. Abrir la app cuando Render muestre **Live**, idealmente cerrar y reabrir en iPhone para actualizar caché.
 
-La base de datos de Supabase ya fue actualizada con `inventory_counts`, `admin_record_inventory_count` y `admin_supply_alerts`; no vuelvas a ejecutar ninguna migración manual. La información de precios permanece limitada al administrador. No se modificaron los usuarios, contraseñas, ID, clientes ni las solicitudes existentes. Las pruebas de base de datos se revirtieron con `ROLLBACK`.
-
-La detección de consumo inusual compara salidas aprobadas, no las solicitudes pendientes. Si aún no existen insumos o historial, las alertas mostrarán un estado vacío.
-
-## Publicar en GitHub / Render
-
-1. Descomprimir el ZIP y subir **los 11 archivos internos** a la raíz de `KvinEspinoza555/insumos-central-retiros` (no subir el ZIP), reemplazando los anteriores.
-2. Guardar con **Commit changes**.
-3. En Render, si no se despliega automáticamente, seleccionar **Manual Deploy → Deploy latest commit**.
-4. Al estar `Live`, volver a abrir la app o recargarla.
-
-**Versión:** 1.8.0
+**Versión:** 1.9.0
