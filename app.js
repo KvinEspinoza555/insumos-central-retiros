@@ -39,7 +39,7 @@ function glyph(kind){
  const name=paths[kind]?kind:(fallback[kind]||"home");
  return '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths[name]+'</svg>';
 }
-const s={page:'home',profile:null,session:null,clients:[],products:[],prices:[],profiles:[],invites:[],assignments:[],orders:[],lines:[],linePrices:[],movements:[],deliveryNotes:[],counts:[],alerts:null,analytics:null,analyticsDays:30,analyticsClient:'',analyticsLoading:false,historyDays:365,historyClient:'',historyAnalytics:null,historyBatches:[],historyLoading:false,historyUploading:false,historyPreview:null,cart:[],register:false,busy:false,filter:'all',reportFrom:'',reportTo:'',modal:null};
+const s={page:'home',profile:null,session:null,clients:[],products:[],prices:[],profiles:[],invites:[],assignments:[],orders:[],lines:[],linePrices:[],movements:[],deliveryNotes:[],counts:[],alerts:null,analytics:null,analyticsDays:30,analyticsClient:'',analyticsLoading:false,historyDays:365,historyClient:'',historyAnalytics:null,historyInsights:null,historyInsightSku:"",historyInsightMetric:"cost",historyLoadSeq:0,historyBatches:[],historyLoading:false,historyUploading:false,historyPreview:null,cart:[],register:false,busy:false,filter:'all',reportFrom:'',reportTo:'',modal:null};
 let realtime=null,syncTimer=null,interval=null,lastSync=0,loading=false;
 const isAdmin=()=>s.profile?.role==='admin' && s.profile?.active;
 const product=id=>s.products.find(p=>p.id===id);
@@ -234,34 +234,139 @@ function historyPage(){
  const maxTrend=Math.max(1,...trend.map(t=>Number(t.cost)||0));
  const plot=trend.length?`<div class="analytics-chart" role="img" aria-label="Evolución de costos de preparaciones">${trend.map(t=>`<div class="analytics-bar-group" title="${esc(t.period)} · ${esc(money(t.cost))} · ${esc(t.records)} registros"><div class="analytics-bar-figure">${Number(t.cost)?`<div class="analytics-bar" style="height:${Math.max(4,percentage(t.cost,maxTrend))}%"></div>`:'<span class="analytics-zero"></span>'}</div><small>${esc(String(t.period).slice(5))}</small></div>`).join('')}</div>`:'<p class="empty">Aún no hay preparaciones para este período.</p>';
  const importPreview=preview?`<section class="panel history-preview"><div class="panel-head"><h3>Vista previa · ${esc(preview.fileName)}</h3><span class="tag ${preview.errors.length?'orange':'green'}">${preview.records.length} filas válidas</span></div>${preview.errors.length?`<div class="notice analytics-warning"><b>${preview.errors.length} error(es) encontrados:</b><ul>${preview.errors.slice(0,15).map(e=>`<li>${esc(e)}</li>`).join('')}</ul>${preview.errors.length>15?'<p>Corrige todos los registros señalados en el archivo.</p>':''}</div>`:''}<p class="hint">Estimaciones por precio actual: ${preview.estimated} líneas. Valor aproximado: ${money(preview.totalCost)}. Los precios que no vienen en el archivo se valoran con el catálogo vigente.</p><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Insumo</th><th>Cantidad</th><th>Precio</th></tr></thead><tbody>${preview.records.slice(0,8).map(v=>`<tr><td>${esc(v.date)}</td><td>${esc(v.client_name)}</td><td>${esc(v.sku)}</td><td>${v.quantity}</td><td>${money(v.unit_price)} ${v.price_origin==='catalog'?'<small>(estimado)</small>':''}</td></tr>`).join('')}</tbody></table></div><div class="actions"><button class="btn btn-primary" data-action="history-save" ${preview.errors.length||!preview.records.length?'disabled':''}>Confirmar importación</button><button class="btn" data-action="history-discard">Cancelar vista previa</button></div></section>`:'';
- return `${header('Preparaciones históricas','Información privada del administrador · No modifica stock ni solicitudes.', '<button class="btn btn-small" data-action="history-template">↓ Plantilla Excel</button>')}
+ return `${header('Preparaciones anteriores','Historial de entregas privadas · No modifica stock ni solicitudes.', '<button class="btn btn-small" data-action="history-template">↓ Plantilla Excel</button>')}
  <section class="panel history-import"><div class="panel-head"><h3>Cargar un historial anterior</h3><span class="tag">Solo administrador</span></div><p>Carga un Excel o CSV con <b>FECHA, CLIENTE, CODIGO y CANTIDAD</b>. Opcional: PRECIO UNITARIO, DOCUMENTO, PREPARADO POR y OBSERVACION.</p><div class="history-upload-actions"><input type="file" id="historyFile" accept=".xlsx,.csv,.tsv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-label="Seleccionar archivo de preparaciones"/><button class="btn btn-primary" data-action="history-preview" ${s.historyUploading?'disabled':''}>Revisar archivo</button></div><p class="hint">El archivo se revisa primero. Si falta el precio histórico, se usa el actual y queda marcado como <b>estimado</b>. Solo tu perfil puede consultar estos valores. Evita subir el mismo archivo dos veces.</p></section>
  ${importPreview}
  ${controls}
  ${s.historyLoading?'<section class="panel"><p class="empty">Actualizando análisis histórico…</p></section>':`<div class="stats analytics-stats">${[
-  stat('Preparaciones registradas',analyticsN(count),'count','Filas históricas'),
-  stat('Valor total preparado',money(st.cost),'analytics','CLP · incluye estimaciones'),
+  stat('Entregas registradas',analyticsN(count),'count','Filas históricas'),
+  stat('Valor histórico entregado',money(st.cost),'analytics','CLP · incluye estimaciones'),
   stat('Clientes',analyticsN(st.clients),'clients','Con preparaciones en el período'),
   stat('Líneas estimadas',analyticsN(estimated),'warning','Precio actual, no necesariamente histórico')].join('')}</div>
  ${estimated?`<div class="notice analytics-warning">De ${count} registros, ${estimated} usan el precio vigente del catálogo. ${money(st.estimated_cost)} es valor estimado y no debe interpretarse como costo histórico comprobado.</div>`:''}
  ${!count?'<div class="notice purple">Todavía no hay preparaciones importadas en el período. Puedes comenzar con la plantilla Excel o cambiar el filtro a «Todo el historial».</div>':''}
- <section class="panel"><div class="panel-head"><h3>Evolución de preparaciones</h3><span class="hint">Valor CLP · por fecha preparada</span></div>${plot}</section>
- <div class="cards-2 analytics-columns"><section class="panel"><h3>Valor preparado por cliente</h3><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Registros</th><th>Valor CLP</th></tr></thead><tbody>${clients.slice(0,50).map(c=>`<tr><td>${esc(c.name)}</td><td>${analyticsN(c.records)}</td><td>${money(c.cost)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Sin datos</td></tr>'}</tbody></table></div></section>
- <section class="panel"><h3>Insumos preparados</h3><div class="table-wrap"><table><thead><tr><th>Insumo</th><th>Cantidad</th><th>Valor CLP</th></tr></thead><tbody>${products.slice(0,70).map(p=>`<tr><td><b>${esc(p.sku)}</b><br><small>${esc(p.name)}</small></td><td>${analyticsN(p.quantity)} ${esc(p.unit)}</td><td>${money(p.cost)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Sin datos</td></tr>'}</tbody></table></div></section></div>
+ <section class="panel"><div class="panel-head"><h3>Evolución de entregas</h3><span class="hint">Valor CLP · por fecha preparada</span></div>${plot}</section>
+ ${renderHistoryInsights()}
+ <div class="cards-2 analytics-columns"><section class="panel"><h3>Valor entregado por cliente</h3><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Registros</th><th>Valor CLP</th></tr></thead><tbody>${clients.slice(0,50).map(c=>`<tr><td>${esc(c.name)}</td><td>${analyticsN(c.records)}</td><td>${money(c.cost)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Sin datos</td></tr>'}</tbody></table></div></section>
+ <section class="panel"><h3>Insumos entregados</h3><div class="table-wrap"><table><thead><tr><th>Insumo</th><th>Cantidad</th><th>Valor CLP</th></tr></thead><tbody>${products.slice(0,70).map(p=>`<tr><td><b>${esc(p.sku)}</b><br><small>${esc(p.name)}</small></td><td>${analyticsN(p.quantity)} ${esc(p.unit)}</td><td>${money(p.cost)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Sin datos</td></tr>'}</tbody></table></div></section></div>
  <section class="panel"><div class="panel-head"><h3>Últimos registros</h3><span class="hint">Máximo 100 filas del período</span></div><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Código</th><th>Cantidad</th><th>Precio</th></tr></thead><tbody>${recent.map(v=>`<tr><td>${esc(v.date)}</td><td>${esc(v.client)}</td><td>${esc(v.sku)}</td><td>${analyticsN(v.quantity)} ${esc(v.unit)}</td><td>${money(v.unit_price)}${v.price_origin==='catalog'?' <small>(estimado)</small>':''}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Sin registros</td></tr>'}</tbody></table></div></section>
  <section class="panel"><div class="panel-head"><h3>Archivos importados</h3><span class="tag">${batches.length} lote(s)</span></div><div class="table-wrap"><table><thead><tr><th>Archivo</th><th>Registros</th><th>Importado</th><th>Acción</th></tr></thead><tbody>${batches.map(b=>`<tr><td>${esc(b.file_name)}</td><td>${analyticsN(b.row_count)}</td><td>${fmtDate(b.created_at)}</td><td><button class="btn btn-small" data-action="history-delete" data-id="${esc(b.id)}">Anular</button></td></tr>`).join('')||'<tr><td colspan="4" class="empty">Ninguna importación registrada</td></tr>'}</tbody></table></div><p class="hint">Si importaste un archivo incorrecto, puedes anular el lote completo y subirlo corregido. Esto no altera el inventario.</p></section>
- <section class="panel analytics-notes"><h3>Dos historiales, sin mezclar datos</h3><p><b>Preparaciones históricas:</b> muestran cantidades que se prepararon según tu Excel, sin asumir que fueron despachadas. <b>Consumo y costos:</b> sigue mostrando únicamente las solicitudes aprobadas en la aplicación. No sumamos ambas cifras para evitar duplicados.</p><button class="btn btn-small" data-page="analytics">Ver consumo de la aplicación</button></section>`}`;
+ <section class="panel analytics-notes"><h3>Dos historiales, sin mezclar datos</h3><p><b>Historial anterior:</b> muestra los insumos informados como entregados en tu Excel. Son registros externos a la aplicación, sin comprobante de despacho generado aquí. <b>Consumo y costos:</b> sigue mostrando únicamente las solicitudes aprobadas en la aplicación. No sumamos ambas cifras para evitar duplicados.</p><button class="btn btn-small" data-page="analytics">Ver consumo de la aplicación</button></section>`}`;
+}
+// v2.3 · Comparaciones mensuales, concentración y evolución por SKU.
+// Se usan solo agregados del historial privado; nunca se cambian existencias.
+function historyMonthTitle(yyyyMM){
+ const names=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+ const [y,m]=String(yyyyMM||'').split('-').map(Number);
+ return y&&m>=1&&m<=12?`${names[m-1]} ${y}`:String(yyyyMM||'');
+}
+function historyMonthComplete(yyyyMM,from,to,observedFrom="",observedTo=""){
+ if(!/^\d{4}-\d{2}$/.test(String(yyyyMM||'')))return false;
+ const [year,month]=yyyyMM.split('-').map(Number);
+ const last=new Date(Date.UTC(year,month,0)).toISOString().slice(0,10);
+ return String(from)<=`${yyyyMM}-01`&&String(to)>=last&&(!observedFrom||String(observedFrom)<=`${yyyyMM}-01`)&&(!observedTo||String(observedTo)>=last);
+}
+function historyAdjacentMonths(a,b){
+ if(!a||!b)return false;
+ const [ay,am]=a.split('-').map(Number),[by,bm]=b.split('-').map(Number);
+ return ay*12+am+1===by*12+bm;
+}
+function historyPercent(n,decimals=1){
+ const v=Number(n);return Number.isFinite(v)?`${v.toLocaleString('es-CL',{minimumFractionDigits:decimals,maximumFractionDigits:decimals})}%`:'—';
+}
+function historyPctDelta(curr,prev){
+ const a=Number(curr),b=Number(prev);
+ return Number.isFinite(a)&&Number.isFinite(b)&&b>0?(a-b)/b*100:null;
+}
+function historyFullComparison(months,from,to){
+ const observedFrom=months[0]?.first_date||"", observedTo=months[months.length-1]?.last_date||"";
+ const valid=months.filter(m=>historyMonthComplete(m.month,from,to,observedFrom,observedTo));
+ for(let i=valid.length-1;i>=1;i--){
+  if(historyAdjacentMonths(valid[i-1].month,valid[i].month))return {prior:valid[i-1],current:valid[i],delta:historyPctDelta(valid[i].cost,valid[i-1].cost)};
+ }
+ return null;
+}
+function renderHistoryInsights(){
+ if(!isAdmin()||!s.historyInsights||!s.historyAnalytics)return '';
+ const d=s.historyInsights,a=s.historyAnalytics,months=d.months||[],cm=d.client_months||[],pm=d.product_months||[],clients=a.clients||[],products=a.products||[];
+ if(!months.length)return '<section class="panel history-insight-empty"><h3>Análisis mensual</h3><p class="hint">No hay entregas para analizar en el período seleccionado.</p></section>';
+ const total=Number(a.stats?.cost)||0, maxMonth=Math.max(1,...months.map(m=>Number(m.cost)||0));
+ const comparison=historyFullComparison(months,d.from,d.to);
+ const observedFrom=months[0]?.first_date||"",observedTo=months[months.length-1]?.last_date||"";
+ const monthDelta=(v,i)=>{
+  const prev=months[i-1];
+  if(!prev||!historyAdjacentMonths(prev.month,v.month)||!historyMonthComplete(v.month,d.from,d.to,observedFrom,observedTo)||!historyMonthComplete(prev.month,d.from,d.to,observedFrom,observedTo))return '<span class="hist-muted">No comparable</span>';
+  const change=historyPctDelta(v.cost,prev.cost);
+  if(change===null)return '<span class="hist-muted">Sin base</span>';
+  return `<span class="hist-variation ${change>0.005?'up':change<-.005?'down':''}">${change>0?'+':''}${historyPercent(change)}</span>`;
+ };
+ const monthRows=months.map((m,i)=>{
+  const complete=historyMonthComplete(m.month,d.from,d.to,observedFrom,observedTo);
+  return `<tr><td><b>${esc(historyMonthTitle(m.month))}</b> ${complete?'<small class="hist-badge">Mes calendario completo</small>':'<small class="hist-badge partial">Parcial</small>'}</td>
+  <td><b>${money(m.cost)}</b><div class="hist-row-track"><i style="width:${percentage(m.cost,maxMonth)}%"></i></div></td>
+  <td>${analyticsN(m.records)}</td><td>${analyticsN(m.clients)}</td><td>${monthDelta(m,i)}</td></tr>`;
+ }).join('');
+ const monthLabels=months.map(m=>m.month);
+ const maxClient=Math.max(1,...clients.map(c=>Number(c.cost)||0));
+ const ranking=clients.slice(0,10).map((c,i)=>`<div class="hist-ranking-row"><span class="hist-ranking-order">${i+1}</span><div class="hist-ranking-main"><div class="hist-ranking-line"><b>${esc(c.name)}</b><small>${historyPercent(total?Number(c.cost)/total*100:0)} del total</small></div><div class="hist-row-track"><i style="width:${percentage(c.cost,maxClient)}%"></i></div></div><strong>${money(c.cost)}</strong></div>`).join('');
+ const clientTop=clients.slice(0,6);
+ const customerMatrix=clientTop.map(c=>{
+  const lookup=new Map(cm.filter(x=>x.client_id===c.id).map(x=>[x.month,x]));
+  return `<tr><td><b>${esc(c.name)}</b></td>${monthLabels.map(month=>`<td>${money(lookup.get(month)?.cost||0)}</td>`).join('')}<td><b>${money(c.cost)}</b></td></tr>`;
+ }).join('');
+ const chosen=(products.some(p=>p.sku===s.historyInsightSku)?s.historyInsightSku:products[0]?.sku)||'';
+ const product=products.find(p=>p.sku===chosen);
+ const productRows=pm.filter(x=>x.sku===chosen);
+ const byMonth=new Map(productRows.map(r=>[r.month,r]));
+ const qtyMode=s.historyInsightMetric==='quantity';
+ const maxProduct=Math.max(1,...months.map(m=>Number(byMonth.get(m.month)?.[qtyMode?'quantity':'cost'])||0));
+ const productChart=months.map(m=>{
+  const row=byMonth.get(m.month),num=Number(row?.[qtyMode?'quantity':'cost'])||0;
+  const format=qtyMode?`${analyticsN(num)} ${esc(product?.unit||'unidades')}`:money(num);
+  return `<div class="hist-product-col"><div class="hist-product-column-track" title="${esc(historyMonthTitle(m.month))} · ${esc(format)}"><i style="height:${num?Math.max(3,percentage(num,maxProduct)):0}%"></i></div><small>${esc(historyMonthTitle(m.month).split(' ')[0])}</small><strong>${qtyMode?analyticsN(num):money(num)}</strong></div>`;
+ }).join('');
+ const productTable=months.map(m=>{const p=byMonth.get(m.month);return `<tr><td>${esc(historyMonthTitle(m.month))}</td><td>${analyticsN(p?.quantity||0)} ${esc(product?.unit||'')}</td><td>${money(p?.cost||0)}</td><td>${p?money(p.average_price):'—'}</td></tr>`}).join('');
+ const items=[];
+ if(clients.length&&total>0){const c=clients[0],share=Number(c.cost)/total*100;items.push(`<b>Cliente a revisar:</b> ${esc(c.name)} concentra ${historyPercent(share)} del valor histórico del filtro. Comprueba si ese consumo corresponde al volumen operado.`);}
+ if(products.length&&total>0){const p=products[0],share=Number(p.cost)/total*100;items.push(`<b>Insumo de mayor costo:</b> ${esc(p.sku)} · ${esc(p.name)} representa ${historyPercent(share)} del gasto. Revisar cantidad entregada, frecuencia y precio unitario.`);}
+ if(comparison&&comparison.delta!==null){const v=comparison.delta;items.push(`<b>Variación mensual:</b> ${esc(historyMonthTitle(comparison.current.month))} ${v>=0?'aumentó':'disminuyó'} ${historyPercent(Math.abs(v))} frente a ${esc(historyMonthTitle(comparison.prior.month))}. Se trata de valor entregado, no de ahorro demostrado.`);}
+ const pricing=products.flatMap(p=>{
+  if(!comparison)return [];
+  const prev=pm.find(x=>x.sku===p.sku&&x.month===comparison.prior.month);
+  const next=pm.find(x=>x.sku===p.sku&&x.month===comparison.current.month);
+  if(!prev||!next)return [];
+  const delta=historyPctDelta(next.average_price,prev.average_price);
+  return delta!==null&&delta>9.99?[{sku:p.sku,delta,prev,next}]:[];
+ }).sort((a,b)=>b.delta-a.delta)[0];
+ if(pricing)items.push(`<b>Precio a verificar:</b> el costo unitario promedio registrado de ${esc(pricing.sku)} subió ${historyPercent(pricing.delta)} en la comparación mensual. Comprueba si cambió el precio o el formato del insumo.`);
+ if(months.some(m=>!historyMonthComplete(m.month,d.from,d.to,observedFrom,observedTo)))items.push('<b>Cobertura parcial:</b> los meses señalados como parciales se muestran en los totales, pero se excluyen del porcentaje de variación mensual.');
+ return `<div class="hist-advanced-heading"><div><span class="flow-overline">ANÁLISIS AVANZADO · SOLO ADMINISTRADOR</span><h3>Consumo y costos históricos</h3><p>Comparaciones calculadas con las entregas registradas, no con las solicitudes nuevas.</p></div></div>
+ <section class="panel hist-months"><div class="panel-head"><h3>Comparación mensual</h3><span class="tag">${months.length} meses con registros</span></div>
+ <div class="table-wrap"><table class="hist-monthly-table"><thead><tr><th>Mes</th><th>Valor entregado</th><th>Líneas</th><th>Clientes</th><th>Variación vs. mes anterior</th></tr></thead><tbody>${monthRows}</tbody></table></div>
+ <p class="hint">La variación porcentual solo se muestra entre meses calendario consecutivos completamente incluidos en el filtro. Esto no confirma que todos los documentos del mes estén cargados.</p></section>
+ <div class="cards-2 analytics-columns hist-analysis-columns"><section class="panel"><div class="panel-head"><h3>Ranking de clientes</h3><span class="tag">Por valor entregado</span></div><div class="hist-ranking-list">${ranking||'<p class="empty">Sin registros</p>'}</div></section>
+ <section class="panel"><div class="panel-head"><h3>Clientes por mes</h3><span class="hint">6 principales</span></div><div class="table-wrap"><table class="hist-client-monthly"><thead><tr><th>Cliente</th>${monthLabels.map(v=>`<th>${esc(v)}</th>`).join('')}<th>Total</th></tr></thead><tbody>${customerMatrix||'<tr><td colspan="2" class="empty">Sin datos</td></tr>'}</tbody></table></div></section></div>
+ <section class="panel hist-product-section"><div class="panel-head"><h3>Evolución por insumo</h3><span class="hint">Compara cantidades y costos mes a mes</span></div>
+ <div class="hist-product-controls"><label>Insumo<select id="historyInsightSku">${products.map(p=>`<option value="${esc(p.sku)}" ${p.sku===chosen?'selected':''}>${esc(p.sku+' · '+p.name)}</option>`).join('')}</select></label><label>Mostrar<select id="historyInsightMetric"><option value="cost" ${qtyMode?'':'selected'}>Valor CLP</option><option value="quantity" ${qtyMode?'selected':''}>Cantidad</option></select></label></div>
+ <div class="hist-product-bars" role="img" aria-label="Evolución por insumo seleccionado">${productChart}</div>
+ <div class="table-wrap"><table><thead><tr><th>Mes</th><th>Cantidad</th><th>Valor CLP</th><th>Precio promedio</th></tr></thead><tbody>${productTable}</tbody></table></div>
+ <p class="hint">Cantidad expresada en ${esc(product?.unit||'unidad')} según el catálogo. Precio promedio ponderado = valor total / cantidad. Los períodos parciales pueden distorsionar las comparaciones.</p></section>
+ <section class="panel hist-findings"><div class="panel-head"><h3>Oportunidades de revisión</h3><span class="tag">Indicadores, no ahorros confirmados</span></div><ul>${items.map(x=>`<li>${x}</li>`).join('')}</ul><p class="hint">Para determinar un ahorro real se necesitaría validar demanda, paquetes procesados y consumo óptimo por cliente, además de la cantidad entregada.</p></section>`;
 }
 async function loadPreparedHistory(){
  if(!isAdmin())return;
+ const request=++s.historyLoadSeq;
  s.historyLoading=true;render();
  try{
-  const [a,b]=await Promise.all([
+  const [a,insights,b]=await Promise.all([
    rpc('admin_prepared_history_analytics',{p_days:s.historyDays,p_client_id:s.historyClient||null}),
+   rpc('admin_prepared_history_insights',{p_days:s.historyDays,p_client_id:s.historyClient||null}),
    sb.from('prepared_import_batches').select('id,file_name,row_count,created_at').order('created_at',{ascending:false}).limit(100)
   ]);
-  if(b.error)throw b.error;s.historyAnalytics=a;s.historyBatches=b.data||[];
- }catch(e){fail(e)}finally{s.historyLoading=false;render()}
+  if(b.error)throw b.error;
+  if(request!==s.historyLoadSeq)return;
+  s.historyAnalytics=a;s.historyInsights=insights;s.historyBatches=b.data||[];
+ }catch(e){if(request===s.historyLoadSeq)fail(e)}finally{if(request===s.historyLoadSeq){s.historyLoading=false;render()}}
 }
 async function previewPreparedFile(){
  if(!isAdmin())throw Error('Solo el administrador puede cargar históricos');
@@ -302,11 +407,16 @@ function downloadHistoryTemplate(){
 function downloadHistoryReport(){
  if(!isAdmin()||!s.historyAnalytics?.stats)throw Error('No hay análisis histórico para exportar');
  const a=s.historyAnalytics,st=a.stats,cs=a.clients||[],ps=a.products||[],trend=a.trend||[],latest=a.latest||[];
+ const insights=s.historyInsights||{},ms=insights.months||[],cm=insights.client_months||[],pm=insights.product_months||[];
+ const insightFirst=ms[0]?.first_date||'',insightLast=ms[ms.length-1]?.last_date||'';
  downloadBlob(makeXlsx([
   {name:'Resumen',rows:[['INDICADOR','VALOR'],['Desde',a.from],['Hasta',a.to],['Cliente',client(a.client_id)?.name||'Todos'],['Registros',Number(st.records)||0],['Valor CLP',Number(st.cost)||0],['Filas estimadas',Number(st.estimated_rows)||0],['Costo estimado CLP',Number(st.estimated_cost)||0]]},
   {name:'Clientes',rows:[['CLIENTE','REGISTROS','COSTO CLP','FILAS ESTIMADAS'],...cs.map(c=>[c.name,Number(c.records),Number(c.cost),Number(c.estimated_rows)])]},
   {name:'Insumos',rows:[['CODIGO','INSUMO','UNIDAD','CANTIDAD','VALOR CLP','PRECIO PROMEDIO','ESTIMADAS'],...ps.map(p=>[p.sku,p.name,p.unit,Number(p.quantity),Number(p.cost),Number(p.average_price),Number(p.estimated_rows)])]},
   {name:'Evolucion',rows:[['PERIODO','VALOR CLP','REGISTROS'],...trend.map(v=>[v.period,Number(v.cost),Number(v.records)])]},
+  {name:'Comparacion mensual',rows:[['MES','VALOR CLP','REGISTROS','CLIENTES','DIAS CON REGISTROS','MES CALENDARIO COMPLETO','PRECIO ESTIMADO CLP'],...ms.map(m=>[m.month,Number(m.cost),Number(m.records),Number(m.clients),Number(m.active_days),historyMonthComplete(m.month,insights.from,insights.to,insightFirst,insightLast)?'SÍ':'NO',Number(m.estimated_cost)])]},
+  {name:'Clientes por mes',rows:[['MES','CLIENTE','REGISTROS','VALOR CLP'],...cm.map(c=>[c.month,c.name,Number(c.records),Number(c.cost)])]},
+  {name:'Insumos por mes',rows:[['MES','CÓDIGO','INSUMO','UNIDAD','CANTIDAD','REGISTROS','COSTO CLP','PRECIO PROM.'],...pm.map(p=>[p.month,p.sku,p.name,p.unit,Number(p.quantity),Number(p.records),Number(p.cost),Number(p.average_price)])]},
   {name:'Ultimos 100',rows:[['FECHA','CLIENTE','CODIGO','INSUMO','UNIDAD','CANTIDAD','PRECIO CLP','VALOR CLP','ORIGEN PRECIO','DOCUMENTO','PREPARADO POR','OBSERVACION'],...latest.map(v=>[v.date,v.client,v.sku,v.name,v.unit,Number(v.quantity),Number(v.unit_price),Number(v.cost),v.price_origin==='catalog'?'ESTIMADO':'ARCHIVO',v.document_no,v.preparer,v.notes])]}
  ]),`Preparaciones_Historicas_${a.from}_${a.to}.xlsx`);
  toast('Análisis histórico descargado');
@@ -537,6 +647,8 @@ root.addEventListener('change',e=>{
   if(e.target.id==='analyticsClient'){s.analyticsClient=e.target.value;loadAnalytics();return}
   if(e.target.id==='historyDays'){s.historyDays=Number(e.target.value);loadPreparedHistory();return}
   if(e.target.id==='historyClient'){s.historyClient=e.target.value;loadPreparedHistory();return}
+  if(e.target.id==='historyInsightSku'){s.historyInsightSku=e.target.value;render();return}
+  if(e.target.id==='historyInsightMetric'){s.historyInsightMetric=e.target.value;render();return}
   if(e.target.id==='reportFrom'){s.reportFrom=e.target.value;render()}
  if(e.target.id==='reportTo'){s.reportTo=e.target.value;render()}
  if(e.target.id==='requestClient')s.clientId=e.target.value;
@@ -571,7 +683,7 @@ root.addEventListener('click',async e=>{
   break;
  case 'copy-access':if(s.tempAccess){await navigator.clipboard.writeText('ID: '+s.tempAccess.employee_id+'\n'+(s.tempAccess.pin?'PIN: ':'Contraseña temporal: ')+s.tempAccess.password);toast('Datos de acceso copiados')}break;
  case 'logout':s.modal=null;s.profile=null;await sb.auth.signOut();if(realtime){await sb.removeChannel(realtime);realtime=null}s.session=null;s.cart=[];s.page='home';render();break;
- case 'refresh':await refresh();toast('Datos actualizados');break;
+ case 'refresh':await refresh();if(s.page==='history'&&isAdmin())await loadPreparedHistory();toast('Datos actualizados');break;
  case 'more':showMore();break;
  case 'profile':showProfile();break;
  case 'product-new':showProduct();break;case 'product-edit':showProduct(id);break;
@@ -643,7 +755,7 @@ boot().catch(fail);
 const xmlEsc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&quot;'}[c]));
 function sheetXml(rows,sheetName){
   const isDetail=sheetName==='Detalle semanal';
-  const sheetWidths={'Resumen':[30,25],'Clientes':[40,17,17,22,20],'Insumos':[18,43,17,16,20,22,20,20],'Evolucion':[20,23,20]};
+  const sheetWidths={'Resumen':[30,25],'Clientes':[40,17,17,22,20],'Insumos':[18,43,17,16,20,22,20,20],'Evolucion':[20,23,20],'Comparacion mensual':[17,23,15,16,23,28,22],'Clientes por mes':[18,41,16,22],'Insumos por mes':[18,17,38,16,17,17,23,20]};
   const widths=isDetail?[15,10,10,15,37,16,40,14,18,19,15]:(sheetWidths[sheetName]||(sheetName==='Resumen clientes'?[36,16,40,15,20]:[16,40,15,20]));
   const columns=widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('');
   const content=rows.map((row,idx)=>`<row r="${idx+1}" ht="${idx===0?28:21}" customHeight="1">${row.map((v,col)=>{

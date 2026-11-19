@@ -653,3 +653,96 @@ textarea{border-radius:20px;}
 @media (max-width:760px) {
   .history-pc-access {display:none !important;}
 }
+
+/* v2.3 · Análisis histórico avanzado, adaptable a escritorio y móvil. */
+.hist-advanced-heading{margin:32px 0 16px;display:flex;gap:16px;align-items:center;justify-content:space-between}
+.hist-advanced-heading h3{font-size:22px;letter-spacing:-.5px;margin:5px 0}
+.hist-advanced-heading p{color:#897F92;font-size:12px;line-height:1.6;margin:0}
+.hist-monthly-table{min-width:760px}
+.hist-monthly-table td{vertical-align:middle;white-space:nowrap}
+.hist-monthly-table td:first-child{white-space:normal;min-width:155px}
+.hist-badge{display:inline-block;border-radius:20px;padding:3px 7px;background:#EAF4EF;color:#237152;font-size:9px;margin-left:5px;vertical-align:middle}
+.hist-badge.partial{background:#FFF4E7;color:#9B681C}
+.hist-row-track{height:6px;background:#F0ECF5;border-radius:99px;overflow:hidden;margin-top:7px;min-width:80px}
+.hist-row-track i{display:block;height:100%;background:linear-gradient(90deg,#73529E,#B393D4);border-radius:99px}
+.hist-muted{color:#A49AAD;font-size:11px}
+.hist-variation{font-weight:780;white-space:nowrap;color:#534863}
+.hist-variation.up{color:#AB5B28}
+.hist-variation.down{color:#317862}
+.hist-analysis-columns{align-items:start}
+.hist-ranking-list{display:grid;gap:14px;margin-top:12px}
+.hist-ranking-row{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:11px;align-items:center}
+.hist-ranking-order{font-weight:800;font-size:11px;color:#7B6D8B}
+.hist-ranking-main{min-width:0}
+.hist-ranking-line{display:flex;gap:10px;justify-content:space-between;align-items:baseline}
+.hist-ranking-line b{font-size:12px;overflow-wrap:anywhere}
+.hist-ranking-line small{font-size:10px;color:#998BA4;flex-shrink:0}
+.hist-ranking-row>strong{font-size:12px;white-space:nowrap}
+.hist-ranking-row .hist-row-track{margin-top:5px}
+.hist-client-monthly{min-width:640px;font-size:11px}
+.hist-client-monthly td:not(:first-child),.hist-client-monthly th:not(:first-child){white-space:nowrap}
+.hist-product-controls{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0 22px}
+.hist-product-controls label{font-size:11px;color:#746583;display:grid;gap:6px;min-width:155px;flex:1}
+.hist-product-controls label:first-child{flex:2}
+.hist-product-controls select{background:#fff;border:1px solid #DFD4E8;border-radius:12px;padding:10px;color:#443554;width:100%;min-width:0}
+.hist-product-bars{display:flex;gap:16px;align-items:stretch;justify-content:space-around;overflow-x:auto;margin:12px 0 23px;padding:6px 0;min-height:190px}
+.hist-product-col{display:flex;flex-direction:column;gap:6px;align-items:center;min-width:85px;flex:1;max-width:165px;text-align:center}
+.hist-product-column-track{height:136px;width:52px;background:#F8F5FB;border-radius:9px;display:flex;align-items:end;overflow:hidden}
+.hist-product-column-track i{display:block;background:linear-gradient(0deg,#7C58AD,#B498D6);width:100%;border-radius:9px 9px 0 0;transition:height .2s}
+.hist-product-col small{font-size:11px;color:#877892}
+.hist-product-col strong{font-size:11px;white-space:nowrap}
+.hist-findings{background:#FCFAFE}
+.hist-findings ul{padding-left:21px;display:grid;gap:13px;line-height:1.6;font-size:12px;color:#62576D;margin:16px 0}
+.hist-findings li::marker{color:#8864AD}
+@media(max-width:760px){
+ .hist-advanced-heading h3{font-size:20px}
+ .hist-ranking-row{grid-template-columns:16px minmax(0,1fr);gap:9px}
+ .hist-ranking-row>strong{grid-column:2;font-size:11px}
+ .hist-ranking-line{align-items:flex-start}
+ .hist-ranking-line small{font-size:9px}
+ .hist-product-controls{flex-direction:column}
+ .hist-product-controls label{width:100%}
+ .hist-monthly-table{font-size:11px}
+ .hist-product-col{min-width:76px}
+ .hist-product-bars{gap:7px}
+ .hist-product-column-track{width:39px}
+}
+
+/* v2.4 · Invitación a instalar la aplicación en navegador (iPhone, Android y escritorio) */
+.icr-install-widget{position:fixed;bottom:22px;right:22px;z-index:45;width:min(388px,calc(100vw - 32px));font-family:inherit;pointer-events:none}
+.icr-install-widget button{font:inherit;cursor:pointer}
+.icr-install-card{pointer-events:auto;display:flex;align-items:flex-start;gap:13px;background:#fff;border:1px solid #e8ddf0;border-radius:20px;padding:16px 13px 15px 16px;box-shadow:0 14px 45px #260e4530;color:#281d35}
+.icr-install-card>img{flex-shrink:0;object-fit:cover;border-radius:12px;box-shadow:0 2px 9px #39205c24}
+.icr-install-copy{flex:1;min-width:0}
+.icr-install-copy strong{display:block;font-size:14px;font-weight:800;line-height:1.25;color:#3e1d66}
+.icr-install-copy>span{display:block;font-size:12px;line-height:1.45;color:#756982;margin-top:5px}
+.icr-install-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:13px}
+.icr-install-main{border:0;background:#4d148c;color:white;padding:10px 15px;border-radius:10px;font-size:12px;font-weight:800;white-space:nowrap}
+.icr-install-main:hover,.icr-install-main:focus-visible{background:#6530a0}
+.icr-install-later{border:0;background:#f4effa;color:#5a4175;padding:10px 12px;border-radius:10px;font-size:12px;font-weight:700}
+.icr-install-close{border:0;background:transparent;color:#84758c;font-size:24px;line-height:1;width:28px;height:28px;flex-shrink:0}
+.icr-install-pill{display:none;pointer-events:auto;margin-left:auto;background:#4d148c;color:#fff;border:1px solid #7f53a9;padding:11px 17px;border-radius:999px;box-shadow:0 8px 28px #32144945;font-size:12px;font-weight:800}
+.icr-install-pill span{font-size:17px;margin-right:4px;vertical-align:-1px}
+.icr-install-widget.icr-install-compact{width:auto}
+.icr-install-compact .icr-install-card{display:none}
+.icr-install-compact .icr-install-pill{display:block}
+.icr-install-guide-overlay{position:fixed;inset:0;z-index:110;background:#1a0b32a8;display:flex;justify-content:center;align-items:center;padding:16px;backdrop-filter:blur(5px)}
+.icr-install-guide{background:#fff;border-radius:22px;padding:24px;width:min(100%,475px);max-height:85dvh;overflow-y:auto;box-shadow:0 22px 65px #180d2b55;color:#342344;font-family:inherit}
+.icr-install-guide-top{display:flex;align-items:center;justify-content:space-between}
+.icr-install-guide-top img{border-radius:12px}
+.icr-install-guide h2{font-size:21px;line-height:1.25;letter-spacing:-.4px;margin:16px 0 8px}
+.icr-install-guide p{font-size:13px;line-height:1.55;color:#786a83;margin:0 0 14px}
+.icr-install-guide ol{list-style:decimal;list-style-position:outside;margin:15px 0 18px;padding-left:24px}
+.icr-install-guide li{font-size:14px;line-height:1.52;margin:0 0 12px;padding-left:4px}
+.icr-install-guide .icr-install-guide-note{border-radius:10px;background:#f7f1fc;padding:12px;color:#503570;font-size:12px}
+.icr-install-guide .icr-install-done{width:100%;margin-top:3px;padding:13px;font-size:13px}
+@media(max-width:760px){
+ .icr-install-widget{bottom:calc(104px + env(safe-area-inset-bottom));right:13px;width:calc(100vw - 26px)}
+ .icr-install-card{padding:13px 10px 13px 13px;border-radius:18px;gap:11px}
+ .icr-install-copy strong{font-size:13px}
+ .icr-install-copy>span{font-size:11px}
+ .icr-install-actions{margin-top:9px}
+ .icr-install-pill{padding:10px 14px}
+ .icr-install-guide{padding:20px;max-height:82dvh}
+}
+@media print{.icr-install-widget,.icr-install-guide-overlay{display:none!important}}

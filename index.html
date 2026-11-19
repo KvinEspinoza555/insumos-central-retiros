@@ -8,13 +8,17 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" type="image/png" href="./icon-192.png" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
-  <link rel="stylesheet" href="./styles.css?v=2.2.1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Central Retiros" />
+  <link rel="stylesheet" href="./styles.css?v=2.4.0" />
   <title>Insumos Central Retiros</title>
 </head>
 <body>
   <div id="app"><main class="loading-screen"><div class="spinner"></div><p>Iniciando Insumos Central Retiros…</p></main></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="./config.js"></script>
-  <script type="module" src="./app.js?v=2.2.1"></script>
+  <script src="./install-pwa.js?v=2.4.0" defer></script>
+  <script type="module" src="./app.js?v=2.4.0"></script>
 </body>
 </html>
