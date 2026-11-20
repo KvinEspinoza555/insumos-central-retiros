@@ -1,0 +1,77 @@
+name: Compilar instaladores Windows y Android
+
+# Para evitar compilaciones involuntarias: solo se ejecuta a petición tuya.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows EXE
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descomprimir codigo en el runner temporal
+        shell: pwsh
+        run: Expand-Archive -Path ./ICR_Codigo_Instaladores_Para_GitHub.zip -DestinationPath . -Force
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar herramientas
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+      - name: Crear instalador
+        working-directory: desktop
+        run: npm run dist:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ICR-Windows-EXE
+          path: desktop/dist/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  android:
+    name: Android APK de pruebas
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descomprimir codigo en el runner temporal
+        run: unzip -oq ICR_Codigo_Instaladores_Para_GitHub.zip -d .
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Preparar Android SDK
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+      - name: Instalar herramientas
+        working-directory: mobile
+        run: npm install --no-audit --no-fund
+      - name: Preparar aplicacion
+        working-directory: mobile
+        run: npm run prepare:web
+      - name: Crear proyecto Android
+        working-directory: mobile
+        run: npx cap add android
+      - name: Sincronizar
+        working-directory: mobile
+        run: npx cap sync android
+      - name: Compilar APK
+        working-directory: mobile
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ICR-Android-APK-Pruebas
+          path: mobile/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
